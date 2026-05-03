@@ -1,0 +1,43 @@
+# General
+.DS_Store
+Thumbs.db
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Node / SvelteKit (Client)
+node_modules/
+.svelte-kit/
+build/
+.output/
+.vercel/
+.netlify/
+.wrangler/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Rust (Server)
+/server/target/
+/server/data/*.db
+/server/data/*.db-shm
+/server/data/*.db-wal
+/server/secret/*.pem
+**/*.rs.bk
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+/restore/

@@ -1,0 +1,5 @@
+target/
+blindtest.db
+blindtest.db-wal
+blindtest.db-shm
+secret/
