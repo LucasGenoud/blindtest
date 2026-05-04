@@ -1,0 +1,36 @@
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: blindtest-server
+    env_file: .env
+    ports:
+      - "3080:80"
+    volumes:
+      - ./server/secret:/app/secret:ro
+      - ./server/data:/app/data
+    restart: unless-stopped
+    networks:
+      - pangolin
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_WS_URL=${VITE_WS_URL}
+    container_name: blindtest-client
+    env_file: .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    restart: unless-stopped
+    networks:
+      - pangolin
+
+networks:
+  pangolin:
+    external: true
