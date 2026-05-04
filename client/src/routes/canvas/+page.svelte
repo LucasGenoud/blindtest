@@ -82,7 +82,7 @@
       setPixelColor(selectedPixel.x, selectedPixel.y, hex);
       ctx.putImageData(imageData, 0, 0);
     } else if (msg.type === 'userPosition') {
-      if ($user && msg.user.username === $user.username) return;
+      if ($user && msg.user.username === $user.name) return;
       otherUsers = { ...otherUsers, [msg.user.wsId]: { ...msg.user, ...msg.data } };
     } else if (msg.type === 'removeUser') {
       const { [msg.wsId]: _, ...rest } = otherUsers;
@@ -477,7 +477,7 @@
 
     <!-- Other users cursors -->
     {#each Object.values(otherUsers) as u (u.wsId)}
-      {#if !$user || u.username !== $user.username}
+      {#if !$user || u.username !== $user.name}
         {@const pos = worldToViewport(u.x + 0.5, u.y + 0.5)}
         <div class="user-cursor" style="left:{pos.x}px;top:{pos.y}px">
           <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
@@ -495,7 +495,7 @@
         <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
           <path d="M1 1L1 12L4.5 8.5L8 14L10 13L6.5 7L11 7L1 1Z" fill="var(--blue)" stroke="var(--bg)" stroke-width="1"/>
         </svg>
-        <span class="cursor-name">{$user.username} (You)</span>
+        <span class="cursor-name">{$user.name} (You)</span>
       </div>
     {/if}
   </div>
