@@ -2,11 +2,13 @@ const DEV = import.meta.env.DEV;
 
 export function getApi() {
   if (typeof window !== 'undefined' && window.__API_URL__) return window.__API_URL__;
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
   return DEV ? 'http://localhost:3080' : 'http://localhost:3080';
 }
 
 export function getWs() {
   if (typeof window !== 'undefined' && window.__WS_URL__) return window.__WS_URL__;
+  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
   return DEV ? 'ws://localhost:3080/ws' : 'ws://localhost:3080/ws';
 }
 

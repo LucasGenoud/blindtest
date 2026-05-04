@@ -24,11 +24,18 @@ async fn main() -> std::io::Result<()> {
     log::info!("Starting server on {}", bind_addr);
 
     HttpServer::new(move || {
-        let cors = Cors::default()
-            .allow_any_origin()
+        let mut cors = Cors::default()
             .allow_any_method()
             .allow_any_header()
             .max_age(3600);
+
+        if let Ok(urls) = std::env::var("FRONTEND_URL") {
+            for url in urls.split(',') {
+                cors = cors.allowed_origin(url.trim());
+            }
+        } else {
+            cors = cors.allow_any_origin();
+        }
 
         App::new()
             .wrap(cors)
