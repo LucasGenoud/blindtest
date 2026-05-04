@@ -16,6 +16,9 @@ services:
     build:
       context: ./client
       dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_WS_URL=${VITE_WS_URL}
     container_name: blindtest-client
     env_file: .env
     ports:
