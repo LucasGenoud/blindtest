@@ -43,7 +43,7 @@ pub async fn process_and_upload_video(
         &s3_bucket_name,
         region,
         credentials,
-        s3::bucket::BucketConfiguration::default(),
+        Default::default(),
     ).await;
 
     let temp_id = Uuid::new_v4().to_string();

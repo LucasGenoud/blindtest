@@ -22,7 +22,7 @@ pub async fn create(
     db: web::Data<DbPool>,
     auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
+    let _claims = match extract_claims(&req, &auth) {
         Some(c) => c,
         None => return unauthorized(),
     };
@@ -33,7 +33,7 @@ pub async fn create(
 
     let _ = db.execute(
         "INSERT INTO custom_blindtests (id, name, public, owner_id, added_date, blindtest_list) VALUES (?1, ?2, 0, ?3, ?4, '[]')",
-        rusqlite::params![id, body.name, claims.sub, now],
+        rusqlite::params![id, body.name, _claims.sub, now],
     );
 
     HttpResponse::Ok().json(serde_json::json!({"_id": id}))
@@ -188,7 +188,7 @@ pub async fn get_audio_names(
     db: web::Data<DbPool>,
     auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
+    let _claims = match extract_claims(&req, &auth) {
         Some(c) => c,
         None => return unauthorized(),
     };

@@ -2,7 +2,6 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use crate::db::DbPool;
 use crate::middleware::{AuthState, extract_claims, unauthorized, forbidden};
-
 #[derive(Deserialize)]
 pub struct GetNextAudioQuery {
     pub category: Option<String>,
@@ -238,9 +237,11 @@ pub async fn new_audio(
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
-    let db = db.lock().unwrap();
+    
+    // Rename to avoid shadowing so `db` can be cloned later
+    let db_locked = db.lock().unwrap(); 
 
-    let result = db.execute(
+    let result = db_locked.execute(
         "INSERT INTO audios (id, category, answer, video_url, start_time, superflus, count, submitted_by, added_date, processing_status)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, 'processing')",
         rusqlite::params![
@@ -250,14 +251,16 @@ pub async fn new_audio(
         ],
     );
 
+    match result {
         Ok(_) => {
             let stat_id = uuid::Uuid::new_v4().to_string();
-            let _ = db.execute(
+            let _ = db_locked.execute(
                 "INSERT INTO stats (id, category, user_id, date, metadata) VALUES (?1, 'audioAdd', ?2, ?3, ?4)",
                 rusqlite::params![stat_id, claims.sub, now, serde_json::json!({"audioId": id, "audioCat": body.category}).to_string()],
             );
 
-            let db_clone = db_pool.clone();
+            // Correctly clone the Actix web::Data pool instead of the undefined `db_pool`
+            let db_clone = db.clone(); 
             let id_clone = id.clone();
             let video_url = body.video_url.clone();
             let start_time = body.start_time.unwrap_or(0);
@@ -274,7 +277,7 @@ pub async fn new_audio(
 pub async fn suggest_audio(
     req: HttpRequest,
     body: web::Json<NewAudioBody>,
-    db: web::Data<DbPool>,
+    db: web::Data<DbPool>, // This is the original 'db'
     auth: web::Data<AuthState>,
 ) -> HttpResponse {
     let claims = match extract_claims(&req, &auth) {
@@ -284,9 +287,10 @@ pub async fn suggest_audio(
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
-    let db = db.lock().unwrap();
+    
+    let db_conn = db.lock().unwrap();
 
-    let result = db.execute(
+    let result = db_conn.execute(
         "INSERT INTO suggestions (id, category, answer, video_url, start_time, superflus, submitted_by, added_date, processing_status)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'processing')",
         rusqlite::params![
@@ -298,10 +302,12 @@ pub async fn suggest_audio(
 
     match result {
         Ok(_) => {
-            let db_clone = db_pool.clone();
+            // Now 'db.clone()' refers back to the 'web::Data' in the function arguments
+            let db_clone = db.clone(); 
             let id_clone = id.clone();
             let video_url = body.video_url.clone();
             let start_time = body.start_time.unwrap_or(0);
+            
             tokio::spawn(async move {
                 crate::video_processor::process_and_upload_video(db_clone, id_clone, video_url, start_time, "suggestions").await;
             });

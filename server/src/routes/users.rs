@@ -135,7 +135,7 @@ pub async fn update_user(
     db: web::Data<DbPool>,
     auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
+    let _claims = match extract_claims(&req, &auth) {
         Some(c) if c.role == "administrator" => c,
         _ => return forbidden(),
     };
@@ -157,7 +157,7 @@ pub async fn delete_user(
     db: web::Data<DbPool>,
     auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
+    let _claims = match extract_claims(&req, &auth) {
         Some(c) if c.role == "administrator" => c,
         _ => return forbidden(),
     };
