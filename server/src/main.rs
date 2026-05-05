@@ -3,6 +3,7 @@ mod middleware;
 mod models;
 mod routes;
 mod ws;
+mod video_processor;
 
 use actix_web::{web, App, HttpServer};
 use actix_cors::Cors;
@@ -86,6 +87,8 @@ async fn main() -> std::io::Result<()> {
             .route("/sendChatMessage", web::post().to(routes::chat::send_message))
             // Suggestions
             .route("/getSuggestions", web::get().to(routes::suggestions::get_suggestions))
+            // Media
+            .route("/media/{id}", web::get().to(routes::media::stream_media))
             // Stats
             .route("/getBlindtestStats", web::get().to(routes::stats::get_blindtest_stats))
             .route("/getCanvasStats", web::get().to(routes::stats::get_canvas_stats))

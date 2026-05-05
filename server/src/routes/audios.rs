@@ -126,7 +126,7 @@ pub async fn get_next_audio(
     }
 
     // Build the random selection query
-    let mut conditions = vec!["1=1".to_string()];
+    let mut conditions = vec!["a.processing_status = 'ready'".to_string()];
     let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
 
     // Category filter
@@ -241,8 +241,8 @@ pub async fn new_audio(
     let db = db.lock().unwrap();
 
     let result = db.execute(
-        "INSERT INTO audios (id, category, answer, video_url, start_time, superflus, count, submitted_by, added_date)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8)",
+        "INSERT INTO audios (id, category, answer, video_url, start_time, superflus, count, submitted_by, added_date, processing_status)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, 'processing')",
         rusqlite::params![
             id, body.category, body.answer, body.video_url,
             body.start_time.unwrap_or(0), body.superflus.unwrap_or(false),
@@ -250,13 +250,21 @@ pub async fn new_audio(
         ],
     );
 
-    match result {
         Ok(_) => {
             let stat_id = uuid::Uuid::new_v4().to_string();
             let _ = db.execute(
                 "INSERT INTO stats (id, category, user_id, date, metadata) VALUES (?1, 'audioAdd', ?2, ?3, ?4)",
                 rusqlite::params![stat_id, claims.sub, now, serde_json::json!({"audioId": id, "audioCat": body.category}).to_string()],
             );
+
+            let db_clone = db_pool.clone();
+            let id_clone = id.clone();
+            let video_url = body.video_url.clone();
+            let start_time = body.start_time.unwrap_or(0);
+            tokio::spawn(async move {
+                crate::video_processor::process_and_upload_video(db_clone, id_clone, video_url, start_time, "audios").await;
+            });
+
             HttpResponse::Ok().json(serde_json::json!({"_id": id}))
         }
         Err(e) => HttpResponse::InternalServerError().json(e.to_string()),
@@ -279,8 +287,8 @@ pub async fn suggest_audio(
     let db = db.lock().unwrap();
 
     let result = db.execute(
-        "INSERT INTO suggestions (id, category, answer, video_url, start_time, superflus, submitted_by, added_date)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO suggestions (id, category, answer, video_url, start_time, superflus, submitted_by, added_date, processing_status)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'processing')",
         rusqlite::params![
             id, body.category, body.answer, body.video_url,
             body.start_time.unwrap_or(0), body.superflus.unwrap_or(false),
@@ -289,7 +297,16 @@ pub async fn suggest_audio(
     );
 
     match result {
-        Ok(_) => HttpResponse::Ok().json(serde_json::json!({"_id": id})),
+        Ok(_) => {
+            let db_clone = db_pool.clone();
+            let id_clone = id.clone();
+            let video_url = body.video_url.clone();
+            let start_time = body.start_time.unwrap_or(0);
+            tokio::spawn(async move {
+                crate::video_processor::process_and_upload_video(db_clone, id_clone, video_url, start_time, "suggestions").await;
+            });
+            HttpResponse::Ok().json(serde_json::json!({"_id": id}))
+        }
         Err(e) => HttpResponse::InternalServerError().json(e.to_string()),
     }
 }
@@ -306,7 +323,7 @@ pub async fn get_all_audios(
 
     let db = db.lock().unwrap();
     let mut stmt = db.prepare(
-        "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, a.rating, a.rating_count, u.name
+        "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, a.rating, a.rating_count, u.name, a.processing_status
          FROM audios a LEFT JOIN users u ON a.submitted_by = u.id ORDER BY a.added_date DESC"
     ).unwrap();
 
@@ -325,6 +342,7 @@ pub async fn get_all_audios(
             "rating": row.get::<_, f64>(9).ok(),
             "ratingCount": row.get::<_, i64>(10).ok(),
             "submittedByUsername": row.get::<_, String>(11).ok(),
+            "processingStatus": row.get::<_, String>(12).unwrap_or_else(|_| "ready".to_string()),
         }))
     }).unwrap().filter_map(|r| r.ok()).collect();
 

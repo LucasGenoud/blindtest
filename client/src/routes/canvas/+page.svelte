@@ -428,6 +428,7 @@
 
   <!-- Canvas viewport -->
   <div class="canvas-viewport"
+    class:hide-cursor={!!hoverPixel}
     bind:this={viewportEl}
     onwheel={handleWheel}
     onmousedown={handleMouseDown}
@@ -489,13 +490,13 @@
     {/each}
 
     <!-- Local user cursor -->
-    {#if hoverPixel && $user}
+    {#if hoverPixel}
       {@const pos = worldToViewport(hoverPixel.x + 0.5, hoverPixel.y + 0.5)}
       <div class="user-cursor local-cursor" style="left:{pos.x}px;top:{pos.y}px">
         <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
           <path d="M1 1L1 12L4.5 8.5L8 14L10 13L6.5 7L11 7L1 1Z" fill="var(--blue)" stroke="var(--bg)" stroke-width="1"/>
         </svg>
-        <span class="cursor-name">{$user.name} (You)</span>
+        <span class="cursor-name">{$user ? $user.name : 'Guest'} (You)</span>
       </div>
     {/if}
   </div>
@@ -592,9 +593,11 @@
 
   .canvas-viewport {
     flex: 1; overflow: hidden; position: relative;
-    cursor: none; /* Hide default cursor since we have the custom one */
     background:
       radial-gradient(circle at 50% 50%, rgba(30, 30, 40, 1) 0%, rgba(10, 10, 11, 1) 100%);
+  }
+  .canvas-viewport.hide-cursor {
+    cursor: none;
   }
   canvas {
     position: absolute;

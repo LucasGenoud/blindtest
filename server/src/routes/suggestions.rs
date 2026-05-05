@@ -6,7 +6,7 @@ pub async fn get_suggestions(
 ) -> HttpResponse {
     let db = db.lock().unwrap();
     let mut stmt = db.prepare(
-        "SELECT s.id, s.category, s.answer, s.video_url, s.start_time, s.superflus, s.submitted_by, s.added_date, u.name
+        "SELECT s.id, s.category, s.answer, s.video_url, s.start_time, s.superflus, s.submitted_by, s.added_date, u.name, s.processing_status
          FROM suggestions s LEFT JOIN users u ON s.submitted_by = u.id ORDER BY s.added_date DESC"
     ).unwrap();
 
@@ -21,6 +21,7 @@ pub async fn get_suggestions(
             "submittedBy": row.get::<_, String>(6)?,
             "addedDate": row.get::<_, String>(7)?,
             "submittedByUsername": row.get::<_, String>(8).ok(),
+            "processingStatus": row.get::<_, String>(9).unwrap_or_else(|_| "ready".to_string()),
         }))
     }).unwrap().filter_map(|r| r.ok()).collect();
 

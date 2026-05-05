@@ -25,24 +25,15 @@
   let playerReady = $state(false);
   let ytApiLoaded = $state(false);
 
-  // Load YouTube IFrame API
+  // Initialize game
   onMount(() => {
     if ($blindtestStatus !== 'started') { goto('/'); return; }
-
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(tag);
-      window.onYouTubeIframeAPIReady = () => { ytApiLoaded = true; initGame(); };
-    } else {
-      ytApiLoaded = true;
-      initGame();
-    }
+    initGame();
   });
 
   onDestroy(() => {
     stopTimer();
-    if (player) { try { player.destroy(); } catch {} }
+    if (player) { player.pause(); player.src = ""; player.load(); }
   });
 
   async function initGame() {
@@ -100,7 +91,7 @@
       audioFlagged = false;
       $showAnswer = false;
 
-      videoId = getVideoId(data.videoData.videoUrl);
+      videoId = data.videoData._id;
       $currentAudioData = data.videoData;
       $audioRating = data.rating || null;
       passedAudiosIds = [...passedAudiosIds, data.videoData._id];
@@ -116,28 +107,25 @@
   }
 
   function loadVideo() {
-    if (!ytApiLoaded || !videoId) return;
-    if (player) { try { player.destroy(); } catch {} }
-
-    player = new window.YT.Player('yt-player', {
-      width: '100%', height: '100%',
-      videoId: videoId,
-      playerVars: { start: $currentAudioData?.startTime || 0, autoplay: 1 },
-      events: {
-        onReady: (e) => { e.target.setVolume($volume); e.target.unMute(); },
-        onStateChange: (e) => {
-          if (e.data === window.YT.PlayerState.PLAYING) {
-            videoBuffering = false;
-            startCountdown();
-          } else if (e.data === window.YT.PlayerState.ENDED) {
-            player.playVideo();
-          }
-        },
-        onError: (e) => {
-          if ($token) { reportMessage = 'Automatic report for broken audio'; flagAudio(true); }
-        },
-      },
-    });
+    if (!videoId || !player) return;
+    player.src = `${getApi()}/media/${videoId}`;
+    player.load();
+    player.volume = $volume;
+    
+    player.oncanplay = () => {
+      videoBuffering = false;
+      player.play().catch(e => console.error("Autoplay prevented", e));
+      startCountdown();
+    };
+    
+    player.onended = () => {
+      player.currentTime = 0;
+      player.play();
+    };
+    
+    player.onerror = (e) => {
+      if ($token) { reportMessage = 'Automatic report for broken audio'; flagAudio(true); }
+    };
   }
 
   function startCountdown() {
@@ -176,8 +164,8 @@
     }
   }
 
-  function pauseBlindtest() { stopTimer(); $blindtestStatus = 'paused'; if (player) player.pauseVideo(); }
-  function resumeBlindtest() { $blindtestStatus = 'started'; if (player) player.playVideo(); startCountdown(); }
+  function pauseBlindtest() { stopTimer(); $blindtestStatus = 'paused'; if (player) player.pause(); }
+  function resumeBlindtest() { $blindtestStatus = 'started'; if (player) player.play(); startCountdown(); }
   function skipAudio() { stopTimer(); playAudio(); }
   function revealAnswer() { stopTimer(); $showAnswer = true; startCountdown(); }
 
@@ -186,7 +174,7 @@
     $currentAudioData = null; $currentAudioNumber = 0; $showAnswer = false;
     $blindtestStatus = 'stopped'; $disabledUsers = [];
     videoId = null;
-    if (player) { try { player.destroy(); } catch {} player = null; }
+    if (player) { player.pause(); player.src = ""; player.load(); }
     goto('/');
   }
 
@@ -212,7 +200,7 @@
 
   function openYoutube() {
     if (player && $currentAudioData) {
-      const t = Math.round(player.getCurrentTime?.() || 0);
+      const t = Math.round(player.currentTime || 0);
       window.open(`${$currentAudioData.videoUrl}&t=${t}`, '_blank');
       pauseBlindtest();
     }
@@ -228,7 +216,7 @@
   }
 
   // Watch volume
-  $effect(() => { if (player?.setVolume) { player.setVolume($volume); if ($volume === 0) player.mute(); else player.unMute(); } });
+  $effect(() => { if (player) { player.volume = $volume; } });
 </script>
 
 <div class="player-container">
@@ -304,9 +292,9 @@
       <div class="answer-box">{$currentAudioData?.answer}</div>
     {/if}
 
-    <!-- YouTube player (always rendered, visibility toggled) -->
+    <!-- Native Video player (always rendered, visibility toggled) -->
     <div class="yt-wrapper" class:visible={$showAnswer && $currentAudioData}>
-      <div id="yt-player"></div>
+      <video bind:this={player} class="native-player" playsinline></video>
     </div>
 
     {#if $showAnswer && $currentAudioData}
@@ -418,6 +406,9 @@
     pointer-events: none; display: none;
   }
   .yt-wrapper.visible { display: block; }
+  .native-player {
+    width: 100%; height: 100%; object-fit: cover;
+  }
   .category-label {
     font-family: var(--mono);
     font-size: 1rem;
