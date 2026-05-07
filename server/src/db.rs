@@ -9,7 +9,7 @@ pub fn init_db() -> Result<DbPool> {
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
 
     let schema = include_str!("../migrations/001_init.sql");
-    let migration2 = include_str!("../migrations/002_add_processing_status.sql");
+    let migration2 = include_str!("../migrations/002_add_s3_key.sql");
     conn.execute_batch(schema)?;
     conn.execute_batch(migration2)?;
 
