@@ -44,6 +44,10 @@ def process_video(conn, table_name, row):
     dl_path = f"{tempfile.gettempdir()}/{temp_id}.mp4"
     norm_path = f"{tempfile.gettempdir()}/{temp_id}_norm.mp4"
 
+    # Reset flagged state: not flagged by default
+    conn.execute("DELETE FROM flagged_audios WHERE audio_id = ?", (video_id,))
+    conn.commit()
+
     try:
         # 1. Download at 720p
         dl_cmd = [
@@ -59,6 +63,11 @@ def process_video(conn, table_name, row):
         if res.returncode != 0 or not os.path.exists(dl_path):
             print(f"Failed to download {video_id}: {res.stderr}")
             conn.execute(f"UPDATE {table_name} SET processing_status = 'error' WHERE id = ?", (video_id,))
+            # Flag the audio since the original video could not be downloaded
+            conn.execute(
+                "INSERT OR IGNORE INTO flagged_audios (id, audio_id, user_id, report_message, date) VALUES (?, ?, ?, ?, datetime('now'))",
+                (f"{video_id}-migration", video_id, "migration", "Original video failed to download")
+            )
             conn.commit()
             return
 

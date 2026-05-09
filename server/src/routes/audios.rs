@@ -329,7 +329,7 @@ pub async fn get_all_audios(
 
     let db = db.lock().unwrap();
     let mut stmt = db.prepare(
-        "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, a.rating, a.rating_count, u.name, a.processing_status
+        "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, a.rating, a.rating_count, u.name, a.processing_status, a.s3_object_key
          FROM audios a LEFT JOIN users u ON a.submitted_by = u.id ORDER BY a.added_date DESC"
     ).unwrap();
 
@@ -349,6 +349,7 @@ pub async fn get_all_audios(
             "ratingCount": row.get::<_, i64>(10).ok(),
             "submittedByUsername": row.get::<_, String>(11).ok(),
             "processingStatus": row.get::<_, String>(12).unwrap_or_else(|_| "ready".to_string()),
+            "s3ObjectKey": row.get::<_, String>(13).ok(),
         }))
     }).unwrap().filter_map(|r| r.ok()).collect();
 
