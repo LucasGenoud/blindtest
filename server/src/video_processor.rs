@@ -55,12 +55,16 @@ pub async fn process_and_upload_video(
     info!("Starting download for video {} from {} to {}", audio_id, start_time, end_time);
 
     // 1. Download and cut using yt-dlp
+    // Use android player client to bypass YouTube bot detection (no JS runtime required)
     let dl_status = Command::new("yt-dlp")
+        .arg("--extractor-args")
+        .arg("youtube:player_client=android,ios")
         .arg("-f")
         .arg("bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
         .arg("--download-sections")
         .arg(format!("*{}-{}", start_time, end_time))
         .arg("--force-keyframes-at-cuts")
+        .arg("--no-playlist")
         .arg("-o")
         .arg(&download_path)
         .arg(&video_url)
@@ -70,10 +74,31 @@ pub async fn process_and_upload_video(
 
     if let Ok(status) = dl_status {
         if !status.success() {
-            error!("yt-dlp failed for {}. Trying full download + ffmpeg fallback.", audio_id);
-            // Fallback: download whole video, then cut with ffmpeg.
-            // For simplicity in this script, if yt-dlp fails with section, we might just fail.
-            // But let's assume it works for most youtube links.
+            error!("yt-dlp (android client) failed for {}. Trying web client fallback.", audio_id);
+            // Fallback: try with default web client (may fail with bot check but worth trying)
+            let fallback_status = Command::new("yt-dlp")
+                .arg("-f")
+                .arg("best[ext=mp4]/best")
+                .arg("--download-sections")
+                .arg(format!("*{}-{}", start_time, end_time))
+                .arg("--force-keyframes-at-cuts")
+                .arg("--no-playlist")
+                .arg("-o")
+                .arg(&download_path)
+                .arg(&video_url)
+                .status();
+
+            if let Ok(fb_status) = fallback_status {
+                if !fb_status.success() {
+                    error!("yt-dlp fallback also failed for {}. Marking as error.", audio_id);
+                    set_processing_status(&db, &audio_id, table, "error");
+                    return;
+                }
+            } else {
+                error!("Failed to execute yt-dlp fallback for {}", audio_id);
+                set_processing_status(&db, &audio_id, table, "error");
+                return;
+            }
         }
     } else {
         error!("Failed to execute yt-dlp for {}", audio_id);
@@ -83,7 +108,7 @@ pub async fn process_and_upload_video(
 
     // Check if downloaded
     if !fs::metadata(&download_path).is_ok() {
-        error!("Downloaded file not found for {}", audio_id);
+        error!("Downloaded file not found for {}. yt-dlp may have been blocked by YouTube.", audio_id);
         set_processing_status(&db, &audio_id, table, "error");
         return;
     }
