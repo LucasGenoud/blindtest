@@ -55,13 +55,11 @@ pub async fn process_and_upload_video(
     info!("Starting download for video {} from {} to {}", audio_id, start_time, end_time);
 
     // 1. Download and cut using yt-dlp
-    // Use android player client to bypass n-challenge (no JS runtime needed) + cookies for auth
+    // Use cookies for YouTube auth; Node.js (installed in image) handles the n-challenge
     let cookies_path = "/app/cookies.txt";
     let dl_status = Command::new("yt-dlp")
         .arg("--cookies")
         .arg(cookies_path)
-        .arg("--extractor-args")
-        .arg("youtube:player_client=android,ios")
         .arg("-f")
         .arg("bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
         .arg("--download-sections")
