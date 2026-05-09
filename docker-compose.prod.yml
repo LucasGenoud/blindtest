@@ -1,16 +1,22 @@
 services:
-  rustfs:
-    image: rustfs/rustfs:latest
-    container_name: blindtest-rustfs
+  seaweedfs:
+    image: chrislusf/seaweedfs
+    container_name: seaweedfs
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9333:9333"
+      - "8333:8333"
+      - "8080:8080"
+      - "18080:18080"
+      - "23646:23646"
     volumes:
-      - ./rustfs_data:/data
-    restart: unless-stopped
-    command: server /data
+      - ./seaweed_data:/data
+    environment:
+      - AWS_ACCESS_KEY_ID=${SEAWEEDFS_ACCESS_KEY}
+      - AWS_SECRET_ACCESS_KEY=${SEAWEEDFS_SECRET_KEY}
+      - S3_BUCKET=${SEAWEEDFS_DEFAULT_BUCKET}
     networks:
       - pangolin
+    restart: unless-stopped
 
   server:
     build:
@@ -19,11 +25,11 @@ services:
     container_name: blindtest-server
     env_file: .env
     environment:
-      - S3_ENDPOINT=http://rustfs:9000
-      - S3_ACCESS_KEY=rustfsadmin
-      - S3_SECRET_KEY=rustfsadmin
-      - S3_BUCKET=blindtest
-      - S3_REGION=us-east-1
+      - S3_ENDPOINT=${SERVER_S3_ENDPOINT}
+      - S3_ACCESS_KEY=${SERVER_S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${SERVER_S3_SECRET_KEY}
+      - S3_BUCKET=${SERVER_S3_BUCKET}
+      - S3_REGION=${SERVER_S3_REGION}
     ports:
       - "3080:80"
     volumes:
@@ -31,10 +37,10 @@ services:
       - ./server/data:/app/data
       - ./server/cookies.txt:/app/cookies.txt
     depends_on:
-      - rustfs
-    restart: unless-stopped
+      - seaweedfs
     networks:
       - pangolin
+    restart: unless-stopped
 
   client:
     build:
@@ -49,9 +55,9 @@ services:
       - "3000:3000"
     depends_on:
       - server
-    restart: unless-stopped
     networks:
       - pangolin
+    restart: unless-stopped
 
 networks:
   pangolin:
