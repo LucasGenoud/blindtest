@@ -29,7 +29,7 @@ services:
     volumes:
       - ./server/secret:/app/secret:ro
       - ./server/data:/app/data
-      - ./server/cookies.txt:/app/cookies.txt:ro
+      - ./server/cookies.txt:/app/cookies.txt
     depends_on:
       - rustfs
     restart: unless-stopped
