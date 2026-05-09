@@ -61,7 +61,7 @@ pub async fn process_and_upload_video(
         .arg("--cookies")
         .arg(cookies_path)
         .arg("-f")
-        .arg("bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best")
+        .arg("bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]/best")
         .arg("--download-sections")
         .arg(format!("*{}-{}", start_time, end_time))
         .arg("--force-keyframes-at-cuts")
