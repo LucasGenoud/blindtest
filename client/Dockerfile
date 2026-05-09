@@ -21,8 +21,8 @@ COPY --from=builder /app/build build/
 COPY --from=builder /app/package.json .
 COPY --from=builder /app/node_modules node_modules/
 
-ENV PORT=3000
-ENV ORIGIN=http://localhost:3000
+ENV PORT=${CLIENT_PORT:-3000}
+ENV ORIGIN=${CLIENT_ORIGIN:-http://localhost:3000}
 EXPOSE 3000
 
 CMD ["node", "build"]

@@ -19,9 +19,9 @@ vite.config.ts.timestamp-*
 
 # Rust (Server)
 /server/target/
-/server/data/*.db
-/server/data/*.db-shm
-/server/data/*.db-wal
+*.db
+*.db-shm
+*.db-wal
 /server/secret/*.pem
 **/*.rs.bk
 

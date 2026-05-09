@@ -50,8 +50,11 @@ services:
         - VITE_WS_URL=${VITE_WS_URL}
     container_name: blindtest-client
     env_file: .env
+    environment:
+      - PORT=${CLIENT_PORT:-3000} # SvelteKit listen port
+      - ORIGIN=${CLIENT_ORIGIN} # SvelteKit origin check (CSRF)
     ports:
-      - "3000:3000"
+      - "${CLIENT_PORT:-3000}:${CLIENT_PORT:-3000}"
     depends_on:
       - server
     networks:
