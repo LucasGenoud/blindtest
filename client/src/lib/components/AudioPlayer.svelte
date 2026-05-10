@@ -20,10 +20,8 @@
   let audioFlagged = $state(false);
   let reportMessage = $state('');
   let customBlindtest = $state(null);
-  let timer = $state(null);
-  let player = $state(null);
-  let playerReady = $state(false);
-  let ytApiLoaded = $state(false);
+  let timer;
+  let player;
 
   // Initialize game
   onMount(() => {
@@ -99,32 +97,42 @@
       countDown = $timeToGuess;
       preciseCountDown = $timeToGuess;
 
-      loadVideo();
     } catch (e) {
       $currentAudioNumber++;
       setTimeout(playAudio, 2000);
     }
   }
 
+  $effect(() => {
+    if (videoId && player) loadVideo();
+  });
+
   function loadVideo() {
-    if (!videoId || !player) return;
     player.src = `${getApi()}/media/${videoId}`;
     player.load();
-    player.volume = $volume;
-    
+    player.volume = $volume / 100;
+
     player.oncanplay = () => {
       videoBuffering = false;
-      player.play().catch(e => console.error("Autoplay prevented", e));
+      player.play().catch(e => console.error('Autoplay prevented', e));
       startCountdown();
     };
-    
+
     player.onended = () => {
       player.currentTime = 0;
       player.play();
     };
-    
-    player.onerror = (e) => {
-      if ($token) { reportMessage = 'Automatic report for broken audio'; flagAudio(true); }
+
+    player.onerror = () => {
+      videoBuffering = false;
+      if ($token) {
+        reportMessage = 'Automatic report for broken audio';
+        flagAudio(true);
+      } else {
+        stopTimer();
+        $currentAudioNumber++;
+        setTimeout(playAudio, 1000);
+      }
     };
   }
 
@@ -216,7 +224,7 @@
   }
 
   // Watch volume
-  $effect(() => { if (player) { player.volume = $volume; } });
+  $effect(() => { if (player) { player.volume = $volume / 100; } });
 </script>
 
 <div class="player-container">
@@ -281,7 +289,7 @@
             <circle cx="130" cy="130" r="120" fill="none" stroke="var(--border)" stroke-width="3"/>
             <circle cx="130" cy="130" r="120" fill="none" stroke="var(--accent)" stroke-width="3"
               stroke-dasharray="{2 * Math.PI * 120}"
-              stroke-dashoffset="{2 * Math.PI * 120 * (1 - preciseCountDown / $timeToGuess)}"
+              stroke-dashoffset="{2 * Math.PI * 120 * (1 - Math.max(0, Math.min(1, $timeToGuess > 0 ? preciseCountDown / $timeToGuess : 0)))}"
               stroke-linecap="round"
               style="transition:stroke-dashoffset 0.1s linear" />
           </svg>

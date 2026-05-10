@@ -7,10 +7,10 @@ import uuid
 
 # Configuration
 DB_PATH = "server/data/blindtest.db"
-S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://localhost:9000")
-S3_ACCESS_KEY = os.environ.get("S3_ACCESS_KEY", "rustfsadmin")
-S3_SECRET_KEY = os.environ.get("S3_SECRET_KEY", "rustfsadmin")
-S3_BUCKET = os.environ.get("S3_BUCKET", "blindtest")
+S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://localhost:8333")
+S3_ACCESS_KEY = os.environ.get("SEAWEEDFS_ACCESS_KEY", "admin")
+S3_SECRET_KEY = os.environ.get("SEAWEEDFS_SECRET_KEY", "gerg2323df23fs")
+S3_BUCKET = os.environ.get("SEAWEEDFS_DEFAULT_BUCKET", "blindtest-audios")
 S3_REGION = os.environ.get("S3_REGION", "us-east-1")
 
 s3 = boto3.client(

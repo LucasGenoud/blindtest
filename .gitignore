@@ -41,3 +41,6 @@ env/
 
 # Project specific
 /restore/
+
+cookies.txt
+seaweed_data/

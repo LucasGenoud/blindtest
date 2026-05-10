@@ -7,6 +7,7 @@ use crate::db::DbPool;
 
 pub async fn stream_media(
     path: web::Path<String>,
+    req: HttpRequest,
     db: web::Data<DbPool>,
 ) -> impl Responder {
     let audio_id = path.into_inner();
@@ -50,12 +51,41 @@ pub async fn stream_media(
     let response_data = bucket.get_object(&s3_key).await;
     match response_data {
         Ok(res) => {
-            // For a robust implementation, we should stream it, but returning the whole body is okay for small clips.
-            // A 2.5 min MP4 is a few MBs.
             let bytes = res.bytes().to_vec();
+            let total_len = bytes.len();
+
+            // Parse Range header (e.g. "bytes=0-" or "bytes=1024-2047")
+            let range_header = req.headers().get("Range").and_then(|v| v.to_str().ok());
+
+            if let Some(range_str) = range_header {
+                if let Some(range_val) = range_str.strip_prefix("bytes=") {
+                    let parts: Vec<&str> = range_val.splitn(2, '-').collect();
+                    if parts.len() == 2 {
+                        let start: usize = parts[0].parse().unwrap_or(0);
+                        let end: usize = if parts[1].is_empty() {
+                            total_len.saturating_sub(1)
+                        } else {
+                            parts[1].parse().unwrap_or(total_len.saturating_sub(1))
+                        };
+
+                        if start < total_len && end < total_len && start <= end {
+                            let chunk = bytes[start..=end].to_vec();
+                            let chunk_len = chunk.len();
+                            return HttpResponse::PartialContent()
+                                .content_type("video/mp4")
+                                .append_header(("Accept-Ranges", "bytes"))
+                                .append_header(("Content-Range", format!("bytes {}-{}/{}", start, end, total_len)))
+                                .append_header(("Content-Length", chunk_len.to_string()))
+                                .body(chunk);
+                        }
+                    }
+                }
+            }
+
             HttpResponse::Ok()
                 .content_type("video/mp4")
                 .append_header(("Accept-Ranges", "bytes"))
+                .append_header(("Content-Length", total_len.to_string()))
                 .body(bytes)
         }
         Err(e) => {
