@@ -522,7 +522,7 @@ pub async fn backup_audios(
     let mut buf = Vec::new();
     {
         let mut zip_writer = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
-        let options = zip::write::FileOptions::default();
+        let options = zip::write::SimpleFileOptions::default();
         zip_writer.start_file("audios.json", options).unwrap();
         zip_writer.write_all(json_data.as_bytes()).unwrap();
         zip_writer.finish().unwrap();
