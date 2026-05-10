@@ -39,55 +39,57 @@
 <style>
   .manage-page { padding: 28px 24px; overflow: auto; width: 100%; }
   .page-header {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     padding-bottom: 20px;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   h1 {
-    font-family: var(--mono);
-    font-size: 1rem;
-    font-weight: 500;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
     letter-spacing: -0.02em;
   }
   .empty-state {
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 40px 0;
+    padding: 48px 0;
     text-align: center;
   }
-  table { width: 100%; border-collapse: collapse; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-card); }
   th {
     text-align: left;
-    padding: 10px 12px;
-    font-family: var(--mono);
-    font-size: 0.62rem;
+    padding: 12px 16px;
+    font-size: 0.6875rem;
+    font-weight: 600;
     color: var(--text-dim);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    background: var(--surface-2);
     border-bottom: 1px solid var(--border);
   }
   td {
-    padding: 10px 12px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border);
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--text-secondary);
   }
   td.mono {
     font-family: var(--mono);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-dim);
   }
-  tr:hover { background: var(--surface); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface-2); }
   .cat-badge {
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    color: var(--text-secondary);
-    background: var(--surface-2);
-    padding: 2px 8px;
-    border-radius: 3px;
-    letter-spacing: 0.04em;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    padding: 2px 10px;
+    border-radius: 9999px;
   }
 </style>

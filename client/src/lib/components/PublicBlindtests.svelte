@@ -21,7 +21,10 @@
 
 <div class="public-container">
   {#if blindtests.length > 0}
-    <div class="section-label" style="padding:20px 20px 0">Public blindtests</div>
+    <div class="section-header">
+      <div class="section-title">Public Blindtests</div>
+      <div class="section-count">{blindtests.length} available</div>
+    </div>
   {/if}
   <div class="public-list">
     {#each blindtests as bt (bt._id)}
@@ -43,26 +46,48 @@
 </div>
 
 <style>
-  .public-container { overflow: auto; flex: 1; }
+  .public-container { overflow: auto; flex: 1; padding: 24px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+  .section-count {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 2px 10px;
+    border-radius: 9999px;
+  }
   .public-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    margin: 14px 20px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
   }
   .public-item {
     background: var(--surface);
-    padding: 20px 22px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 14px;
-    transition: background 0.15s;
+    transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
   }
-  .public-item:hover { background: var(--surface-2); }
+  .public-item:hover {
+    border-color: var(--accent-border);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-1px);
+  }
   .item-header {
     display: flex;
     align-items: flex-start;
@@ -70,22 +95,21 @@
     gap: 8px;
   }
   .item-title {
-    font-family: var(--mono);
-    font-size: 0.82rem;
-    font-weight: 500;
+    font-size: 0.9375rem;
+    font-weight: 600;
     color: var(--text-primary);
     line-height: 1.4;
   }
   .item-count {
-    font-family: var(--mono);
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 1px 6px;
-    border-radius: 3px;
+    font-size: 0.6875rem;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    padding: 2px 8px;
+    border-radius: 9999px;
     white-space: nowrap;
     flex-shrink: 0;
+    font-weight: 600;
   }
   .item-footer {
     display: flex;
@@ -94,35 +118,34 @@
     margin-top: auto;
   }
   .item-user {
-    font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-weight: 500;
   }
-  .item-actions { display: flex; gap: 4px; }
+  .item-actions { display: flex; gap: 6px; }
   .action-btn {
-    background: transparent;
+    background: var(--surface-2);
     border: 1px solid var(--border);
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 5px 10px;
+    border-radius: var(--radius-md);
     transition: all 0.15s;
     display: flex;
     align-items: center;
   }
   .action-btn:hover {
     border-color: var(--border-2);
-    background: var(--bg);
+    background: var(--border);
   }
   .action-btn.play {
-    color: var(--green);
-    border-color: rgba(74, 222, 128, 0.3);
+    color: white;
+    background: var(--accent);
+    border-color: var(--accent);
   }
   .action-btn.play:hover {
-    background: rgba(74, 222, 128, 0.08);
-    border-color: var(--green);
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
   }
 </style>

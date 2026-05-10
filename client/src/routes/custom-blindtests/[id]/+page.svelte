@@ -141,11 +141,12 @@
     padding: 14px 20px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
+    box-shadow: var(--shadow-card);
   }
   h2 {
-    font-family: var(--mono);
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
     letter-spacing: -0.02em;
   }
   .header-right {
@@ -155,11 +156,9 @@
     gap: 12px;
   }
   .save-indicator {
-    font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--green);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    font-weight: 500;
     animation: pulse-anim 1.5s ease-in-out infinite;
   }
   .editor-split { display: flex; flex: 1; overflow: hidden; }
@@ -170,50 +169,49 @@
     display: flex;
     gap: 8px;
     border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-2);
     align-items: center;
   }
   .panel-count {
-    font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
   .pool-list, .selected-list { overflow: auto; flex: 1; }
   .pool-item {
-    padding: 8px 16px;
+    padding: 10px 16px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     transition: background 0.15s;
   }
   .pool-item:hover { background: var(--accent-dim); }
   .pool-name {
     color: var(--text-secondary);
-    font-size: 0.78rem;
+    font-size: 0.875rem;
   }
   .cat-dot {
-    width: 6px; height: 6px;
+    width: 7px; height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
+    opacity: 0.8;
   }
   .selected-item {
-    padding: 8px 16px;
-    font-size: 0.8rem;
+    padding: 10px 16px;
+    font-size: 0.875rem;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     gap: 8px;
     transition: background 0.15s;
   }
-  .selected-item:hover { background: var(--surface); }
+  .selected-item:hover { background: var(--surface-2); }
   .item-num {
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     color: var(--text-dim);
     width: 28px;
     text-align: right;
@@ -221,23 +219,22 @@
   }
   .item-name {
     color: var(--text-secondary);
-    font-size: 0.78rem;
+    font-size: 0.875rem;
     flex: 1;
+    font-weight: 500;
   }
   .item-cat {
-    font-family: var(--mono);
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-weight: 500;
   }
   .remove-btn {
     background: transparent;
-    border: 1px solid rgba(248, 113, 113, 0.3);
+    border: 1px solid rgba(220, 38, 38, 0.25);
     color: var(--red);
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-sm);
     font-size: 10px;
     cursor: pointer;
     display: flex;
@@ -248,15 +245,13 @@
     padding: 0;
   }
   .remove-btn:hover {
-    background: rgba(248, 113, 113, 0.1);
+    background: rgba(220, 38, 38, 0.08);
     border-color: var(--red);
   }
   .loading-state {
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 40px;
+    padding: 48px;
+    text-align: center;
   }
 </style>

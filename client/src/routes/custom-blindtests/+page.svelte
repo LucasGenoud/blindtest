@@ -70,56 +70,52 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     padding-bottom: 20px;
     border-bottom: 1px solid var(--border);
   }
   h1 {
-    font-family: var(--mono);
-    font-size: 1rem;
-    font-weight: 500;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
     letter-spacing: -0.02em;
   }
   .empty-state {
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 40px 0;
+    padding: 48px 0;
     text-align: center;
   }
   .bt-list {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
+    gap: 10px;
   }
   .bt-item {
     background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
     padding: 18px 22px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: background 0.15s;
+    transition: box-shadow 0.2s, border-color 0.2s;
   }
-  .bt-item:hover { background: var(--surface-2); }
+  .bt-item:hover {
+    border-color: var(--accent-border);
+    box-shadow: var(--shadow-lg);
+  }
   .bt-info { display: flex; flex-direction: column; gap: 4px; }
   .bt-name {
-    font-family: var(--mono);
-    font-size: 0.82rem;
-    font-weight: 500;
+    font-size: 0.9375rem;
+    font-weight: 600;
     color: var(--text-primary);
   }
   .bt-count {
-    font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    font-weight: 500;
   }
-  .bt-actions { display: flex; gap: 6px; }
+  .bt-actions { display: flex; gap: 8px; }
 </style>

@@ -4,11 +4,21 @@
   import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
+  import { theme } from '$lib/stores/themeStore.js';
   import { connectWebSocket } from '$lib/websocket.js';
   import { getApi } from '$lib/api.js';
   import { onMount } from 'svelte';
 
   let { children } = $props();
+
+  // Apply theme on mount and whenever it changes
+  $effect(() => {
+    if ($theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  });
 
   onMount(async () => {
     // Auto-login if token exists

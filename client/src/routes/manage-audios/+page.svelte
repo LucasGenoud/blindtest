@@ -346,17 +346,19 @@
     gap: 10px;
   }
   h1 {
-    font-family: var(--mono);
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     color: var(--text-primary);
   }
   .total-badge {
-    font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--text-dim);
-    letter-spacing: 0.06em;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-weight: 500;
   }
   .header-actions {
     display: flex;
@@ -372,30 +374,30 @@
     padding: 10px 14px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
   }
   .stat-chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
-    border-radius: 5px;
-    font-family: var(--mono);
-    font-size: 0.68rem;
+    padding: 5px 12px;
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
     color: var(--text-secondary);
     background: transparent;
     border: 1px solid transparent;
     cursor: pointer;
     transition: all 0.15s;
-    letter-spacing: 0.03em;
+    font-weight: 500;
   }
   .stat-chip:hover { background: var(--surface-2); }
   .stat-chip.active {
-    background: var(--surface-2);
-    border-color: var(--border-2);
-    color: var(--text-primary);
+    background: var(--accent-dim);
+    border-color: var(--accent-border);
+    color: var(--accent);
   }
-  .stat-chip strong { color: var(--text-primary); font-weight: 600; }
+  .stat-chip strong { font-weight: 700; }
   .flag-chip { cursor: default; color: var(--red); }
   .flag-chip strong { color: var(--red); }
   .chip-dot {

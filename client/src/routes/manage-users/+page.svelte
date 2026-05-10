@@ -70,53 +70,53 @@
 <style>
   .manage-page { padding: 28px 24px; overflow: auto; width: 100%; }
   .page-header {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     padding-bottom: 20px;
     border-bottom: 1px solid var(--border);
   }
   h1 {
-    font-family: var(--mono);
-    font-size: 1rem;
-    font-weight: 500;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
     letter-spacing: -0.02em;
   }
-  table { width: 100%; border-collapse: collapse; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-card); }
   th {
     text-align: left;
-    padding: 10px 12px;
-    font-family: var(--mono);
-    font-size: 0.62rem;
+    padding: 12px 16px;
+    font-size: 0.6875rem;
+    font-weight: 600;
     color: var(--text-dim);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    background: var(--surface-2);
     border-bottom: 1px solid var(--border);
   }
   td {
-    padding: 10px 12px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border);
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--text-secondary);
   }
   td.mono {
     font-family: var(--mono);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-dim);
   }
   .user-name {
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-primary);
   }
-  tr:hover { background: var(--surface); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface-2); }
   tr.deleted { opacity: 0.35; }
   .deleted-label {
-    font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--red);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    font-weight: 500;
   }
   :global(.btn-danger.sm) {
-    font-size: 0.6rem;
-    padding: 3px 8px;
+    font-size: 0.75rem;
+    padding: 5px 10px;
   }
 </style>

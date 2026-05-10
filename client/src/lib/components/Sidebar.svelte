@@ -111,86 +111,98 @@
 
 <style>
   .sidebar {
-    width: 340px; flex-shrink: 0;
+    width: 300px; flex-shrink: 0;
     height: 100%; display: flex;
     flex-direction: column;
     border-right: 1px solid var(--border);
     background: var(--surface);
   }
   .sidebar-content {
-    overflow: auto; padding: 20px;
+    overflow: auto; padding: 20px 16px;
     display: flex; flex-direction: column; gap: 6px;
   }
-  .sidebar-title {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    margin-top: 16px;
-    margin-bottom: 4px;
+  .section-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--text-dim);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+  .sidebar-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 18px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
   }
   .sidebar-title:first-child { margin-top: 0; }
   .sidebar-title .val {
-    color: var(--text-primary);
-    font-weight: 600;
+    color: var(--accent);
+    font-weight: 700;
+    margin-left: 4px;
   }
   .cat-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 4px;
   }
   .cat-name {
-    font-family: var(--mono);
-    font-size: 0.72rem;
+    font-size: 0.8rem;
+    font-weight: 500;
     color: var(--text-secondary);
   }
   .cat-stats {
-    font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     color: var(--text-dim);
+    font-family: var(--mono);
   }
   .sidebar-footer {
-    padding: 16px 20px;
+    padding: 16px;
     border-top: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     gap: 12px;
+    background: var(--surface-2);
   }
   .footer-meta {
-    font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    text-align: center;
   }
   .start-btn {
     width: 100%;
     padding: 12px;
     background: var(--accent);
-    color: var(--bg);
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    color: #ffffff;
+    font-family: var(--sans);
+    font-size: 0.9rem;
     font-weight: 600;
     border: none;
-    border-radius: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    border-radius: var(--radius-md);
+    letter-spacing: 0.01em;
     transition: all 0.2s;
+    box-shadow: 0 2px 8px var(--accent-dim);
   }
   .start-btn:hover:not(:disabled) {
-    box-shadow: 0 0 20px rgba(232, 255, 90, 0.25);
+    background: var(--accent-hover);
+    box-shadow: 0 4px 14px var(--accent-dim);
+    transform: translateY(-1px);
   }
   .start-btn:disabled {
-    opacity: 0.3;
+    opacity: 0.4;
     cursor: not-allowed;
+    box-shadow: none;
   }
   .start-btn:active:not(:disabled) {
     transform: scale(0.98);
   }
   :global(.btn-primary.sm) {
-    font-size: 0.6rem;
-    padding: 3px 8px;
+    font-size: 0.7rem;
+    padding: 3px 10px;
   }
   @media screen and (max-width: 700px) {
     .sidebar { width: 100%; }

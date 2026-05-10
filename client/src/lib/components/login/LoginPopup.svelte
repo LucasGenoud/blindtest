@@ -92,64 +92,69 @@
     display: flex;
     position: relative;
     border-bottom: 1px solid var(--border);
+    padding: 0 24px;
   }
   .tab {
     flex: 1;
     text-align: center;
-    padding: 14px;
+    padding: 16px 0;
     cursor: pointer;
-    font-family: var(--mono);
-    font-size: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
     transition: color 0.2s;
   }
-  .tab.active { color: var(--accent); }
+  .tab.active { color: var(--accent); font-weight: 600; }
   .tab:hover { color: var(--text-secondary); }
   .tab-indicator {
     position: absolute;
     bottom: 0;
-    left: 0;
-    width: 50%;
+    left: 24px;
+    width: calc(50% - 24px);
     height: 2px;
     background: var(--accent);
+    border-radius: 2px 2px 0 0;
     transition: left 0.3s ease;
   }
-  .tab-indicator.right { left: 50%; }
+  .tab-indicator.right { left: calc(50%); }
   .form {
-    padding: 24px;
+    padding: 28px 24px;
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
+  .form-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
   .error {
-    font-family: var(--mono);
-    font-size: 0.72rem;
+    font-size: 0.8125rem;
     color: var(--red);
-    padding: 8px 12px;
-    background: rgba(248, 113, 113, 0.06);
-    border: 1px solid rgba(248, 113, 113, 0.2);
-    border-radius: 4px;
+    padding: 10px 14px;
+    background: rgba(220, 38, 38, 0.06);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    border-radius: var(--radius-md);
   }
   .submit-btn {
     width: 100%;
     padding: 12px;
     background: var(--accent);
-    color: var(--bg);
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    color: white;
+    font-family: var(--sans);
+    font-size: 0.9rem;
     font-weight: 600;
     border: none;
-    border-radius: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.2s;
     margin-top: 4px;
   }
   .submit-btn:hover:not(:disabled) {
-    box-shadow: 0 0 20px rgba(232, 255, 90, 0.2);
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px var(--accent-dim);
   }
   .submit-btn:disabled {
     opacity: 0.4;

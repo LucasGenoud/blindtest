@@ -331,6 +331,7 @@
     gap: 8px;
     border-bottom: 1px solid var(--border);
     background: var(--surface);
+    box-shadow: var(--shadow-card);
   }
   .toolbar-left, .toolbar-right {
     display: flex;
@@ -338,27 +339,27 @@
     gap: 6px;
   }
   .btn-circle.warn {
-    border-color: rgba(251, 146, 60, 0.4);
+    border-color: rgba(234, 88, 12, 0.35);
     color: var(--orange);
   }
   .btn-circle.warn:hover {
-    background: rgba(251, 146, 60, 0.08);
+    background: rgba(234, 88, 12, 0.08);
   }
   .btn-circle.danger {
-    border-color: rgba(248, 113, 113, 0.4);
+    border-color: rgba(220, 38, 38, 0.35);
     color: var(--red);
   }
   .btn-circle.danger:hover {
-    background: rgba(248, 113, 113, 0.08);
+    background: rgba(220, 38, 38, 0.08);
   }
   .progress-label {
     font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     color: var(--text-dim);
-    letter-spacing: 0.04em;
+    font-weight: 500;
   }
   .progress-track {
-    height: 2px;
+    height: 3px;
     background: var(--border);
     width: 100%;
   }
@@ -366,11 +367,13 @@
     height: 100%;
     background: var(--accent);
     transition: width 0.3s ease;
+    border-radius: 0 2px 2px 0;
   }
   .blindtest-main {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     position: relative;
+    gap: 20px;
   }
   .loading-state {
     display: flex;
@@ -379,11 +382,10 @@
     gap: 16px;
   }
   .loading-text {
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
+    font-weight: 500;
+    letter-spacing: 0.05em;
   }
   .countdown-circle {
     position: relative;
@@ -398,60 +400,65 @@
     letter-spacing: -0.04em;
   }
   .answer-box {
-    font-family: var(--mono);
-    font-size: 36px;
-    font-weight: 600;
+    font-size: 2.5rem;
+    font-weight: 700;
     color: var(--accent);
-    padding: 16px 32px;
-    border: 1px solid var(--accent-border);
+    padding: 20px 40px;
+    border: 2px solid var(--accent-border);
     background: var(--accent-dim);
-    border-radius: 8px;
-    margin-bottom: 16px;
+    border-radius: var(--radius-xl);
     letter-spacing: -0.02em;
+    box-shadow: 0 0 0 4px var(--accent-dim);
   }
   .yt-wrapper {
     width: 80%; max-width: 800px; aspect-ratio: 16/9;
     pointer-events: none; display: none;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
   }
   .yt-wrapper.visible { display: block; }
   .native-player {
     width: 100%; height: 100%; object-fit: cover;
   }
   .category-label {
-    font-family: var(--mono);
-    font-size: 1rem;
-    color: var(--text-secondary);
-    padding: 10px 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    padding: 6px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9999px;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
   }
   .audio-meta {
     position: fixed; bottom: 16px;
     background: var(--surface);
     border: 1px solid var(--border);
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-family: var(--mono);
-    font-size: 0.7rem;
+    padding: 8px 16px;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
     display: flex;
     align-items: center;
     gap: 6px;
+    box-shadow: var(--shadow-card);
   }
-  .meta-label { color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
-  .meta-val { color: var(--text-primary); font-weight: 500; }
+  .meta-label { color: var(--text-dim); font-weight: 500; }
+  .meta-val { color: var(--text-primary); font-weight: 600; }
   .meta-sep { color: var(--text-dim); }
   .rating-stars { display: flex; gap: 2px; margin-left: 8px; }
   .star {
     font-size: 18px; cursor: pointer;
-    color: var(--text-dim);
+    color: var(--border-2);
     transition: color 0.15s;
   }
   .star.filled { color: var(--accent); }
   .star:hover { color: var(--accent); }
   @media screen and (max-width: 700px) {
     .countdown-circle .value { font-size: 64px; }
-    .answer-box { font-size: 20px; padding: 10px 16px; }
-    .category-label { font-size: 0.8rem; }
+    .answer-box { font-size: 1.5rem; padding: 14px 24px; }
+    .category-label { font-size: 0.75rem; }
     .toolbar { flex-wrap: wrap; }
   }
 </style>
