@@ -98,21 +98,11 @@
 
     {#if contributorUsers.length > 0}
       <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Exclude contributors</div>
-      <div class="contributor-list">
+      <select multiple bind:value={selectedDisabled} class="contributor-select">
         {#each contributorUsers as u}
-          {@const excluded = selectedDisabled.includes(u._id)}
-          <button
-            class="contributor-btn"
-            class:excluded
-            onclick={() => {
-              if (excluded) selectedDisabled = selectedDisabled.filter(id => id !== u._id);
-              else selectedDisabled = [...selectedDisabled, u._id];
-            }}
-          >
-            {u.name}
-          </button>
+          <option value={u._id}>{u.name}</option>
         {/each}
-      </div>
+      </select>
     {/if}
   </div>
 
@@ -129,28 +119,26 @@
 </div>
 
 <style>
-  .contributor-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .contributor-btn {
-    padding: 3px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
+  .contributor-select {
+    width: 100%;
     background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
     color: var(--text-secondary);
     font-size: 0.75rem;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    padding: 4px;
+    outline: none;
   }
-  .contributor-btn:hover {
+  .contributor-select:focus {
     border-color: var(--border-2);
-    color: var(--text);
   }
-  .contributor-btn.excluded {
-    background: rgba(248, 113, 113, 0.15);
-    border-color: var(--red);
+  .contributor-select option {
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .contributor-select option:checked {
+    background: rgba(248, 113, 113, 0.15) linear-gradient(0deg, rgba(248,113,113,0.15) 0%, rgba(248,113,113,0.15) 100%);
     color: var(--red);
   }
 </style>
