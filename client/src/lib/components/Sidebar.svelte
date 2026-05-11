@@ -98,17 +98,21 @@
 
     {#if contributorUsers.length > 0}
       <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Exclude contributors</div>
-      <select
-        class="exclude-select"
-        multiple
-        onchange={(e) => {
-          selectedDisabled = Array.from(e.currentTarget.selectedOptions).map(o => o.value);
-        }}
-      >
-        {#each contributorUsers as user}
-          <option value={user._id} selected={selectedDisabled.includes(user._id)}>{user.name}</option>
+      <div class="contributor-list">
+        {#each contributorUsers as u}
+          {@const excluded = selectedDisabled.includes(u._id)}
+          <button
+            class="contributor-btn"
+            class:excluded
+            onclick={() => {
+              if (excluded) selectedDisabled = selectedDisabled.filter(id => id !== u._id);
+              else selectedDisabled = [...selectedDisabled, u._id];
+            }}
+          >
+            {u.name}
+          </button>
         {/each}
-      </select>
+      </div>
     {/if}
   </div>
 
@@ -125,27 +129,28 @@
 </div>
 
 <style>
-  .exclude-select {
-    width: 100%;
+  .contributor-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .contributor-btn {
+    padding: 3px 10px;
+    border-radius: 999px;
     border: 1px solid var(--border);
-    border-radius: 6px;
     background: var(--surface-2);
     color: var(--text-secondary);
     font-size: 0.75rem;
-    padding: 4px 2px;
     cursor: pointer;
-    outline: none;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
-  .exclude-select:focus {
+  .contributor-btn:hover {
     border-color: var(--border-2);
+    color: var(--text);
   }
-  .exclude-select option {
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  .exclude-select option:checked {
-    background: rgba(248, 113, 113, 0.2);
+  .contributor-btn.excluded {
+    background: rgba(248, 113, 113, 0.15);
+    border-color: var(--red);
     color: var(--red);
   }
 </style>
