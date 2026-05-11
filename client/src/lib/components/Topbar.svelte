@@ -29,7 +29,7 @@
   }
 </script>
 
-<header class="z-[1000] flex h-14 items-center justify-between border-b border-border bg-surface px-5 shadow-card">
+<header class="z-[1000] flex h-14 items-center justify-between border-b px-5">
   <div class="flex items-center gap-3">
     <div
       class="flex cursor-pointer items-center gap-1.5 no-underline"
@@ -88,7 +88,7 @@
         </div>
 
         {#if showProfile}
-          <div class="absolute right-0 top-[calc(100%+10px)] z-[1001] flex min-w-[210px] flex-col gap-0.5 rounded-lg border border-border bg-surface p-2 shadow-panel">
+          <div class="profile-dropdown absolute right-0 top-[calc(100%+10px)] z-[1001] flex min-w-[210px] flex-col gap-0.5 rounded-lg border p-2">
             <div class="px-3 py-2 pb-1 text-sm font-semibold text-text-primary">{$user.name}</div>
             <div class="my-1 h-px bg-border"></div>
             <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/statistics')}>📊 Statistics</button>
@@ -112,3 +112,21 @@
 {#if showLogin}
   <LoginPopup onclose={() => showLogin = false} />
 {/if}
+
+<style>
+  header {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-bottom-color: var(--glass-border);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 20px rgba(0, 0, 0, 0.06);
+  }
+
+  .profile-dropdown {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+</style>

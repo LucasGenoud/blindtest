@@ -45,7 +45,7 @@
   }
 </script>
 
-<div class="flex h-full w-full shrink-0 flex-col border-r border-border bg-surface md:w-[300px] md:max-w-[300px]">
+<div class="sidebar-panel flex h-full w-full shrink-0 flex-col border-r md:w-[300px] md:max-w-[300px]">
   <div class="flex flex-1 flex-col gap-1.5 overflow-auto px-4 py-5">
     <div class="section-label">Configuration</div>
 
@@ -106,7 +106,7 @@
     {/if}
   </div>
 
-  <div class="flex flex-col gap-3 border-t border-border bg-surface-2 p-4">
+  <div class="sidebar-footer flex flex-col gap-3 border-t p-4">
     <div class="text-center text-xs text-text-dim">
       ~{estimatedTime()} min estimated
     </div>
@@ -119,6 +119,23 @@
 </div>
 
 <style>
+  .sidebar-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-right-color: var(--glass-border);
+  }
+
+  .sidebar-footer {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-top-color: var(--glass-border);
+  }
+
+  [data-theme='dark'] .sidebar-footer {
+    background: rgba(255, 255, 255, 0.04);
+  }
   .contributor-select {
     width: 100%;
     background: var(--surface-2);
