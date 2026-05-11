@@ -8,11 +8,22 @@
   let audios = $state([]);
   let search = $state('');
   let filterStatus = $state('all');
+  let filterCategory = $state('all');
+  let filterSuperflus = $state('all');
   let editAudio = $state(null);
   let showAddForm = $state(false);
   let previewAudio = $state(null);
   let newAudio = $state({ category: 'movies', answer: '', videoUrl: '', startTime: 0, superflus: false });
   let loading = $state(true);
+
+  // Pagination
+  const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+  let pageSize = $state(50);
+  let currentPage = $state(1);
+
+  // Sorting
+  let sortKey = $state('addedDate');
+  let sortDir = $state('desc'); // 'asc' | 'desc'
 
   onMount(async () => {
     if ($userPermission < 2) { goto('/'); return; }
@@ -30,12 +41,60 @@
     let list = audios;
     if (search) {
       const s = search.toLowerCase();
-      list = list.filter(a => a.answer.toLowerCase().includes(s) || a.category.toLowerCase().includes(s));
+      list = list.filter(a => a.answer.toLowerCase().includes(s) || a.category.toLowerCase().includes(s) || (a.submittedByUsername || '').toLowerCase().includes(s));
     }
     if (filterStatus !== 'all') {
       list = list.filter(a => a.processingStatus === filterStatus);
     }
+    if (filterCategory !== 'all') {
+      list = list.filter(a => a.category === filterCategory);
+    }
+    if (filterSuperflus === 'yes') {
+      list = list.filter(a => a.superflus);
+    } else if (filterSuperflus === 'no') {
+      list = list.filter(a => !a.superflus);
+    }
+    // Sort
+    list = [...list].sort((a, b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (av == null) av = '';
+      if (bv == null) bv = '';
+      if (typeof av === 'string') av = av.toLowerCase();
+      if (typeof bv === 'string') bv = bv.toLowerCase();
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
     return list;
+  }
+
+  function pagedAudios() {
+    const list = filteredAudios();
+    const start = (currentPage - 1) * pageSize;
+    return list.slice(start, start + pageSize);
+  }
+
+  const totalFiltered = $derived(filteredAudios().length);
+  const totalPages = $derived(Math.max(1, Math.ceil(totalFiltered / pageSize)));
+
+  // Reset page when filters/search/sort/pageSize change
+  $effect(() => {
+    search; filterStatus; filterCategory; filterSuperflus; sortKey; sortDir; pageSize;
+    currentPage = 1;
+  });
+
+  function setSort(key) {
+    if (sortKey === key) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey = key;
+      sortDir = 'asc';
+    }
+  }
+
+  function sortIcon(key) {
+    if (sortKey !== key) return '⇅';
+    return sortDir === 'asc' ? '↑' : '↓';
   }
 
   async function addAudio() {
@@ -155,9 +214,21 @@
         🚩 Flagged <strong>{counts.flagged}</strong>
       </div>
     {/if}
+    <!-- Extra filters -->
+    <select class="filter-select" bind:value={filterCategory}>
+      <option value="all">All categories</option>
+      {#each categoryListValueLabel as c}
+        <option value={c.value}>{c.label}</option>
+      {/each}
+    </select>
+    <select class="filter-select" bind:value={filterSuperflus}>
+      <option value="all">Superflus: all</option>
+      <option value="no">Superflus: no</option>
+      <option value="yes">Superflus: yes</option>
+    </select>
     <div class="search-wrap">
       <span class="search-icon">⌕</span>
-      <input bind:value={search} placeholder="Search answer or category…" class="search-input" />
+      <input bind:value={search} placeholder="Search answer, category, user…" class="search-input" />
     </div>
   </div>
 
@@ -194,18 +265,19 @@
       <table>
         <thead>
           <tr>
-            <th>Status</th>
-            <th>Category</th>
-            <th>Answer</th>
-            <th>Start</th>
-            <th>Plays</th>
-            <th>Rating</th>
+            <th><button class="sort-btn" onclick={() => setSort('processingStatus')}>Status {sortIcon('processingStatus')}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('category')}>Category {sortIcon('category')}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('answer')}>Answer {sortIcon('answer')}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('startTime')}>Start {sortIcon('startTime')}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('count')}>Plays {sortIcon('count')}</button></th>
             <th>Flags</th>
+            <th><button class="sort-btn" onclick={() => setSort('submittedByUsername')}>By {sortIcon('submittedByUsername')}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('addedDate')}>Added {sortIcon('addedDate')}</button></th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {#each filteredAudios() as audio (audio._id)}
+          {#each pagedAudios() as audio (audio._id)}
             <tr class:flagged={audio.flagged?.length > 0}>
               <!-- S3 Status -->
               <td>
@@ -226,8 +298,6 @@
               <td class="mono">{audio.startTime}s</td>
               <!-- Plays -->
               <td class="mono">{audio.count}</td>
-              <!-- Rating -->
-              <td class="mono">{audio.rating?.toFixed(1) || '—'}</td>
               <!-- Flags -->
               <td>
                 {#if audio.flagged?.length > 0}
@@ -239,6 +309,10 @@
                   <span class="dim">—</span>
                 {/if}
               </td>
+              <!-- By -->
+              <td class="mono dim-cell">{audio.submittedByUsername || '—'}</td>
+              <!-- Added -->
+              <td class="mono dim-cell">{audio.addedDate ? audio.addedDate.slice(0, 10) : '—'}</td>
               <!-- Actions -->
               <td>
                 <div class="action-group">
@@ -258,6 +332,36 @@
       </table>
     {/if}
   </div>
+
+  <!-- Pagination bar -->
+  {#if !loading && totalFiltered > 0}
+    <div class="pagination-bar">
+      <div class="pagination-info">
+        {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalFiltered)} of {totalFiltered}
+      </div>
+      <div class="pagination-controls">
+        <button class="page-btn" disabled={currentPage === 1} onclick={() => currentPage = 1}>«</button>
+        <button class="page-btn" disabled={currentPage === 1} onclick={() => currentPage--}>‹</button>
+        {#each Array.from({length: Math.min(7, totalPages)}, (_, i) => {
+          const half = 3;
+          let start = Math.max(1, currentPage - half);
+          let end = Math.min(totalPages, start + 6);
+          start = Math.max(1, end - 6);
+          return start + i;
+        }).filter(p => p >= 1 && p <= totalPages) as p}
+          <button class="page-btn {p === currentPage ? 'active' : ''}" onclick={() => currentPage = p}>{p}</button>
+        {/each}
+        <button class="page-btn" disabled={currentPage === totalPages} onclick={() => currentPage++}>›</button>
+        <button class="page-btn" disabled={currentPage === totalPages} onclick={() => currentPage = totalPages}>»</button>
+      </div>
+      <div class="page-size-select">
+        <span class="page-size-label">Rows</span>
+        {#each PAGE_SIZE_OPTIONS as opt}
+          <button class="page-size-btn {pageSize === opt ? 'active' : ''}" onclick={() => pageSize = opt}>{opt}</button>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>
 
 <!-- Edit Popup -->
@@ -316,7 +420,6 @@
       <div class="preview-meta">
         <span class="meta-item"><span class="meta-label">Start</span> {previewAudio.startTime}s</span>
         <span class="meta-item"><span class="meta-label">Plays</span> {previewAudio.count}</span>
-        <span class="meta-item"><span class="meta-label">Rating</span> {previewAudio.rating?.toFixed(1) || '—'}</span>
         <span class="meta-item"><span class="meta-label">Added by</span> {previewAudio.submittedByUsername || '—'}</span>
       </div>
     </div>
@@ -455,6 +558,107 @@
   .url-input { flex: 1; min-width: 200px; }
   .short-input { width: 90px; }
   .form-actions { display: flex; gap: 6px; }
+
+  /* ── Sort buttons ── */
+  .sort-btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .sort-btn:hover { color: var(--text-primary); }
+
+  /* ── Category / superflus filter selects ── */
+  .filter-select {
+    font-size: 0.75rem;
+    padding: 5px 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    cursor: pointer;
+    height: 30px;
+  }
+
+  /* ── Dim cell ── */
+  .dim-cell {
+    color: var(--text-dim);
+    font-size: 0.7rem;
+  }
+
+  /* ── Pagination bar ── */
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .pagination-info {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    min-width: 90px;
+  }
+  .pagination-controls {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+  .page-btn {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .page-btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-2); }
+  .page-btn.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); font-weight: 700; }
+  .page-btn:disabled { opacity: 0.3; cursor: default; }
+  .page-size-select {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .page-size-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    margin-right: 4px;
+  }
+  .page-size-btn {
+    min-width: 36px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .page-size-btn:hover { background: var(--surface-2); }
+  .page-size-btn.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); font-weight: 700; }
 
   /* ── Table ── */
   .table-wrap {

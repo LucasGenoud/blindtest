@@ -91,7 +91,7 @@ pub async fn get_next_audio(
     // If a specific audioId is provided (custom blindtest mode)
     if let Some(ref audio_id) = query.audio_id {
         let result = db.query_row(
-            "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, a.rating, a.rating_count, u.name
+            "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, u.name
              FROM audios a LEFT JOIN users u ON a.submitted_by = u.id WHERE a.id = ?1",
             [audio_id],
             |row| {
@@ -106,9 +106,7 @@ pub async fn get_next_audio(
                         "count": row.get::<_, i64>(6)?,
                         "submittedBy": row.get::<_, String>(7)?,
                         "addedDate": row.get::<_, String>(8)?,
-                        "rating": row.get::<_, f64>(9).ok(),
-                        "ratingCount": row.get::<_, i64>(10).ok(),
-                        "submittedByUsername": row.get::<_, String>(11).ok(),
+                        "submittedByUsername": row.get::<_, String>(9).ok(),
                     }
                 }))
             },
@@ -164,7 +162,7 @@ pub async fn get_next_audio(
 
     let order = if prioritize { "a.count ASC, RANDOM()" } else { "RANDOM()" };
     let sql = format!(
-        "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, a.rating, a.rating_count, u.name
+        "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, u.name
          FROM audios a LEFT JOIN users u ON a.submitted_by = u.id
          WHERE {} ORDER BY {} LIMIT 1",
         conditions.join(" AND "), order
@@ -184,9 +182,7 @@ pub async fn get_next_audio(
                 "count": row.get::<_, i64>(6)?,
                 "submittedBy": row.get::<_, String>(7)?,
                 "addedDate": row.get::<_, String>(8)?,
-                "rating": row.get::<_, f64>(9).ok(),
-                "ratingCount": row.get::<_, i64>(10).ok(),
-                "submittedByUsername": row.get::<_, String>(11).ok(),
+                "submittedByUsername": row.get::<_, String>(9).ok(),
             }
         }))
     });
@@ -321,7 +317,7 @@ pub async fn get_all_audios(
 
     let db = db.lock().unwrap();
     let mut stmt = db.prepare(
-        "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, a.rating, a.rating_count, u.name, a.processing_status, a.s3_object_key
+        "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, u.name, a.processing_status, a.s3_object_key
          FROM audios a LEFT JOIN users u ON a.submitted_by = u.id ORDER BY a.added_date DESC"
     ).unwrap();
 
@@ -337,11 +333,9 @@ pub async fn get_all_audios(
             "count": row.get::<_, i64>(6)?,
             "submittedBy": row.get::<_, String>(7)?,
             "addedDate": row.get::<_, String>(8)?,
-            "rating": row.get::<_, f64>(9).ok(),
-            "ratingCount": row.get::<_, i64>(10).ok(),
-            "submittedByUsername": row.get::<_, String>(11).ok(),
-            "processingStatus": row.get::<_, String>(12).unwrap_or_else(|_| "ready".to_string()),
-            "s3ObjectKey": row.get::<_, String>(13).ok(),
+            "submittedByUsername": row.get::<_, String>(9).ok(),
+            "processingStatus": row.get::<_, String>(10).unwrap_or_else(|_| "ready".to_string()),
+            "s3ObjectKey": row.get::<_, String>(11).ok(),
         }))
     }).unwrap().filter_map(|r| r.ok()).collect();
 

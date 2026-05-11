@@ -30,7 +30,8 @@
   let dragStartScreen = $state({ x: 0, y: 0 });
   let dragStartPan = $state({ x: 0, y: 0 });
   let didDrag = $state(false);
-  let hoverPixel = $state(null); // { x, y } in canvas coords
+  let hoverPixel = $state(null); // { x, y } from mouse movement
+  let selectedPixel = $state(null); // { x, y } selected via click or arrow keys
   let showGrid = $state(true);
 
   // --- Touch state ---
@@ -149,30 +150,11 @@
     zoom = clampedZoom;
   }
 
-  function ensureVisible(pixel) {
+  function centerOnPixel(pixel) {
     if (!viewportEl || !pixel) return;
     const rect = viewportEl.getBoundingClientRect();
-    // Use the center of the pixel for visibility check
-    const pos = worldToViewport(pixel.x + 0.5, pixel.y + 0.5);
-    const margin = 100; // pixels from edge
-    
-    let targetPanX = panX;
-    let targetPanY = panY;
-
-    if (pos.x < margin) {
-      targetPanX += (margin - pos.x);
-    } else if (pos.x > rect.width - margin) {
-      targetPanX -= (pos.x - (rect.width - margin));
-    }
-
-    if (pos.y < margin) {
-      targetPanY += (margin - pos.y);
-    } else if (pos.y > rect.height - margin) {
-      targetPanY -= (pos.y - (rect.height - margin));
-    }
-
-    panX = targetPanX;
-    panY = targetPanY;
+    panX = rect.width / 2 - (pixel.x + 0.5) * zoom;
+    panY = rect.height / 2 - (pixel.y + 0.5) * zoom;
   }
 
   // --- Event handlers ---
@@ -184,13 +166,9 @@
   }
 
   function handleMouseDown(e) {
-    if (e.button === 1 || e.button === 2) {
-      startDrag(e);
-      e.preventDefault();
-    } else if (e.button === 0 && e.shiftKey) {
-      startDrag(e);
-      e.preventDefault();
-    }
+    // Left, middle, or right click all can pan
+    startDrag(e);
+    e.preventDefault();
   }
 
   function startDrag(e) {
@@ -254,7 +232,11 @@
   function handleClick(e) {
     if (didDrag) return;
     const { x, y } = getCanvasPixel(e);
-    placePixel(x, y);
+    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
+    selectedPixel = { x, y };
+    centerOnPixel(selectedPixel);
+    sendPosition(selectedPixel);
+    debouncedPixelQuery(selectedPixel, e.clientX, e.clientY);
   }
 
   // --- Touch support ---
@@ -331,36 +313,36 @@
     // Navigation and placement
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-      if (hoverPixel) hoverPixel = { x: hoverPixel.x, y: Math.max(0, hoverPixel.y - 1) };
-      else hoverPixel = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
-      ensureVisible(hoverPixel);
-      sendPosition(hoverPixel);
-      debouncedPixelQuery(hoverPixel);
+      if (selectedPixel) selectedPixel = { x: selectedPixel.x, y: Math.max(0, selectedPixel.y - 1) };
+      else selectedPixel = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
+      centerOnPixel(selectedPixel);
+      sendPosition(selectedPixel);
+      debouncedPixelQuery(selectedPixel);
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      if (hoverPixel) hoverPixel = { x: hoverPixel.x, y: Math.min(SIZE - 1, hoverPixel.y + 1) };
-      else hoverPixel = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
-      ensureVisible(hoverPixel);
-      sendPosition(hoverPixel);
-      debouncedPixelQuery(hoverPixel);
+      if (selectedPixel) selectedPixel = { x: selectedPixel.x, y: Math.min(SIZE - 1, selectedPixel.y + 1) };
+      else selectedPixel = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
+      centerOnPixel(selectedPixel);
+      sendPosition(selectedPixel);
+      debouncedPixelQuery(selectedPixel);
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      if (hoverPixel) hoverPixel = { x: Math.max(0, hoverPixel.x - 1), y: hoverPixel.y };
-      else hoverPixel = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
-      ensureVisible(hoverPixel);
-      sendPosition(hoverPixel);
-      debouncedPixelQuery(hoverPixel);
+      if (selectedPixel) selectedPixel = { x: Math.max(0, selectedPixel.x - 1), y: selectedPixel.y };
+      else selectedPixel = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
+      centerOnPixel(selectedPixel);
+      sendPosition(selectedPixel);
+      debouncedPixelQuery(selectedPixel);
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      if (hoverPixel) hoverPixel = { x: Math.min(SIZE - 1, hoverPixel.x + 1), y: hoverPixel.y };
-      else hoverPixel = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
-      ensureVisible(hoverPixel);
-      sendPosition(hoverPixel);
-      debouncedPixelQuery(hoverPixel);
+      if (selectedPixel) selectedPixel = { x: Math.min(SIZE - 1, selectedPixel.x + 1), y: selectedPixel.y };
+      else selectedPixel = { x: Math.floor(SIZE/2), y: Math.floor(SIZE/2) };
+      centerOnPixel(selectedPixel);
+      sendPosition(selectedPixel);
+      debouncedPixelQuery(selectedPixel);
     } else if (e.key === ' ') {
       e.preventDefault();
-      if (hoverPixel) {
-        placePixel(hoverPixel.x, hoverPixel.y);
+      if (selectedPixel) {
+        placePixel(selectedPixel.x, selectedPixel.y);
       }
     }
   }
@@ -476,6 +458,22 @@
       "></div>
     {/if}
 
+    <!-- Selected pixel highlight -->
+    {#if selectedPixel && zoom >= 2}
+      {@const pos = worldToViewport(selectedPixel.x, selectedPixel.y)}
+      <div class="selected-highlight" style="
+        left: {pos.x}px;
+        top: {pos.y}px;
+        width: {zoom}px;
+        height: {zoom}px;
+      ">
+        <span class="selected-crosshair tl"></span>
+        <span class="selected-crosshair tr"></span>
+        <span class="selected-crosshair bl"></span>
+        <span class="selected-crosshair br"></span>
+      </div>
+    {/if}
+
     <!-- Other users cursors -->
     {#each Object.values(otherUsers) as u (u.wsId)}
       {#if !$user || u.username !== $user.name}
@@ -489,9 +487,10 @@
       {/if}
     {/each}
 
-    <!-- Local user cursor -->
-    {#if hoverPixel}
-      {@const pos = worldToViewport(hoverPixel.x + 0.5, hoverPixel.y + 0.5)}
+    <!-- Local user cursor (shown at selected pixel or hover) -->
+    {#if selectedPixel || hoverPixel}
+      {@const cursorPixel = selectedPixel ?? hoverPixel}
+      {@const pos = worldToViewport(cursorPixel.x + 0.5, cursorPixel.y + 0.5)}
       <div class="user-cursor local-cursor" style="left:{pos.x}px;top:{pos.y}px">
         <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
           <path d="M1 1L1 12L4.5 8.5L8 14L10 13L6.5 7L11 7L1 1Z" fill="var(--blue)" stroke="var(--bg)" stroke-width="1"/>
@@ -511,13 +510,19 @@
     <button class="hud-btn hud-btn-text" class:active={showGrid} onclick={() => showGrid = !showGrid} title="Toggle grid">
       Grid
     </button>
+    <div class="hud-divider"></div>
+    <span class="hud-hint">Click to select · Arrows to move · Space to paint</span>
   </div>
 
   <!-- HUD: Coordinates -->
-  {#if hoverPixel}
+  {#if selectedPixel || hoverPixel}
+    {@const displayPixel = selectedPixel ?? hoverPixel}
     <div class="hud-coords">
-      <span class="coord">X: {hoverPixel.x}</span>
-      <span class="coord">Y: {hoverPixel.y}</span>
+      <span class="coord">X: {displayPixel.x}</span>
+      <span class="coord">Y: {displayPixel.y}</span>
+      {#if selectedPixel}
+        <span class="coord coord-hint">· SPACE to paint</span>
+      {/if}
     </div>
   {/if}
 
@@ -615,10 +620,29 @@
     position: absolute;
     pointer-events: none;
     z-index: 3;
-    border: 1.5px solid var(--accent);
-    box-shadow: 0 0 6px rgba(232, 255, 90, 0.25);
+    border: 1.5px solid rgba(255,255,255,0.4);
     mix-blend-mode: normal;
   }
+
+  .selected-highlight {
+    position: absolute;
+    pointer-events: none;
+    z-index: 4;
+    outline: 2px solid #fff;
+    outline-offset: 1px;
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.5), 0 0 12px rgba(255,255,255,0.2);
+  }
+  .selected-crosshair {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-color: #fff;
+    border-style: solid;
+  }
+  .selected-crosshair.tl { top: -3px; left: -3px; border-width: 2px 0 0 2px; }
+  .selected-crosshair.tr { top: -3px; right: -3px; border-width: 2px 2px 0 0; }
+  .selected-crosshair.bl { bottom: -3px; left: -3px; border-width: 0 0 2px 2px; }
+  .selected-crosshair.br { bottom: -3px; right: -3px; border-width: 0 2px 2px 0; }
 
   .user-cursor {
     position: absolute; pointer-events: none;
@@ -696,6 +720,15 @@
     text-align: center;
     user-select: none;
   }
+  .hud-hint {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    padding: 0 4px;
+    user-select: none;
+  }
   .hud-divider {
     width: 1px; height: 18px;
     background: var(--border);
@@ -719,6 +752,10 @@
     font-size: 0.62rem;
     color: var(--text-secondary);
     letter-spacing: 0.05em;
+  }
+  .coord-hint {
+    color: var(--accent);
+    opacity: 0.8;
   }
 
   .pixel-tooltip {
