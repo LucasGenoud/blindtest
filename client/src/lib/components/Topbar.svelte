@@ -123,10 +123,8 @@
   }
 
   .profile-dropdown {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-color: var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    background: var(--surface);
+    border-color: var(--border);
+    box-shadow: var(--shadow-lg);
   }
 </style>
