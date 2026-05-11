@@ -8,10 +8,26 @@
 
   let contributorUsers = $state([]);
   let selectedDisabled = $state([]);
+  let dropdownOpen = $state(false);
+  let dropdownEl = $state(null);
 
   $effect(() => {
     $disabledUsers = [...selectedDisabled];
   });
+
+  function toggleContributor(id) {
+    if (selectedDisabled.includes(id)) {
+      selectedDisabled = selectedDisabled.filter(x => x !== id);
+    } else {
+      selectedDisabled = [...selectedDisabled, id];
+    }
+  }
+
+  function handleClickOutside(e) {
+    if (dropdownEl && !dropdownEl.contains(e.target)) {
+      dropdownOpen = false;
+    }
+  }
 
   onMount(async () => {
     try {
@@ -98,11 +114,44 @@
 
     {#if contributorUsers.length > 0}
       <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Exclude contributors</div>
-      <select multiple bind:value={selectedDisabled} class="contributor-select">
-        {#each contributorUsers as u}
-          <option value={u._id}>{u.name}</option>
-        {/each}
-      </select>
+      <div class="contributor-dropdown" bind:this={dropdownEl}>
+        <button
+          type="button"
+          class="contributor-trigger"
+          onclick={() => dropdownOpen = !dropdownOpen}
+          aria-haspopup="listbox"
+          aria-expanded={dropdownOpen}
+        >
+          <span>
+            {#if selectedDisabled.length === 0}
+              None excluded
+            {:else}
+              {selectedDisabled.length} excluded
+            {/if}
+          </span>
+          <svg class="chevron" class:open={dropdownOpen} width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        {#if dropdownOpen}
+          <svelte:window onclick={handleClickOutside} />
+          <ul class="contributor-menu" role="listbox" aria-multiselectable="true">
+            {#each contributorUsers as u}
+              {@const checked = selectedDisabled.includes(u._id)}
+              <li role="option" aria-selected={checked}>
+                <label class="contributor-option" class:selected={checked}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onchange={() => toggleContributor(u._id)}
+                  />
+                  <span>{u.name}</span>
+                </label>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
     {/if}
   </div>
 
@@ -136,26 +185,78 @@
   [data-theme='dark'] .sidebar-footer {
     background: rgba(255, 255, 255, 0.04);
   }
-  .contributor-select {
+  .contributor-dropdown {
+    position: relative;
     width: 100%;
+  }
+  .contributor-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 10px;
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--text-secondary);
     font-size: 0.75rem;
-    padding: 4px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s;
+  }
+  .contributor-trigger:hover,
+  .contributor-trigger:focus-visible {
+    border-color: var(--border-2);
     outline: none;
   }
-  .contributor-select:focus {
-    border-color: var(--border-2);
+  .chevron {
+    flex-shrink: 0;
+    transition: transform 0.15s;
+    color: var(--text-dim);
   }
-  .contributor-select option {
-    padding: 4px 8px;
+  .chevron.open {
+    transform: rotate(180deg);
+  }
+  .contributor-menu {
+    position: absolute;
+    z-index: 50;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .contributor-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
     border-radius: 4px;
     cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    transition: background 0.1s;
+    user-select: none;
+    width: 100%;
   }
-  .contributor-select option:checked {
-    background: rgba(248, 113, 113, 0.15) linear-gradient(0deg, rgba(248,113,113,0.15) 0%, rgba(248,113,113,0.15) 100%);
+  .contributor-option:hover {
+    background: var(--surface-2);
+  }
+  .contributor-option.selected {
     color: var(--red);
+  }
+  .contributor-option input[type="checkbox"] {
+    accent-color: var(--red);
+    width: 13px;
+    height: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
   }
 </style>
