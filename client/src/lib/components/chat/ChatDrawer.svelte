@@ -72,155 +72,39 @@
 
 <div>
   {#if !showChat}
-    <div class="chat-btn" onclick={openChat}>
+    <div
+      class="fixed bottom-5 right-5 z-[999] flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[20px] text-white shadow-[0_4px_14px_var(--accent-dim)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_var(--accent-dim)] max-[800px]:hidden [background:var(--accent)] hover:[background:var(--accent-hover)]"
+      onclick={openChat}
+    >
       💬
       {#if notifCount > 0}
-        <div class="notif">{notifCount}</div>
+        <div class="absolute bottom-full right-full mb-[-8px] mr-[-8px] rounded-full bg-red px-[5px] py-px text-[0.65rem] font-bold text-white">{notifCount}</div>
       {/if}
     </div>
   {/if}
 
   {#if showChat}
-    <div class="chat-popup">
-      <div class="chat-header">
-        <span class="chat-title">Chat</span>
-        <span class="close-btn" onclick={() => showChat = false}>✕</span>
+    <div class="fixed bottom-5 right-5 z-[1000] flex h-[500px] w-[360px] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-panel">
+      <div class="flex items-center justify-between border-b border-border bg-surface px-5 py-4">
+        <span class="text-[0.9375rem] font-bold text-text-primary">Chat</span>
+        <span class="flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm border border-border bg-surface-2 text-sm text-text-dim transition-colors duration-150 hover:border-border-2 hover:text-text-primary" onclick={() => showChat = false}>✕</span>
       </div>
-      <div id="chatMessages" class="chat-messages">
+      <div id="chatMessages" class="flex-1 overflow-auto px-5 py-4">
         {#each messages as m (m._id)}
-          <div class="msg">
-            <div class="msg-header">
-              <span class="msg-user" style="color:{m.color}">{m.username}</span>
-              <span class="msg-time">{m.time}</span>
+          <div class="mb-3.5 last:mb-0">
+            <div class="mb-[3px] flex items-baseline gap-2">
+              <span class="text-[0.8125rem] font-semibold" style="color:{m.color}">{m.username}</span>
+              <span class="font-mono text-[0.6875rem] text-text-dim">{m.time}</span>
             </div>
-            <div class="msg-text">{m.messageValue}</div>
+            <div class="text-sm leading-6 text-text-secondary">{m.messageValue}</div>
           </div>
         {/each}
       </div>
-      <div class="chat-input">
+      <div class="flex gap-2 border-t border-border bg-surface-2 px-4 py-3">
         <input bind:value={messageText} placeholder="Message..."
           onkeydown={(e) => { e.stopPropagation(); if (e.key === 'Enter') sendMessage(); }} />
-        <button class="send-btn" onclick={sendMessage} disabled={!messageText}>➤</button>
+        <button class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 [background:var(--accent)] hover:[background:var(--accent-hover)] disabled:hover:[background:var(--accent)]" onclick={sendMessage} disabled={!messageText}>➤</button>
       </div>
     </div>
   {/if}
 </div>
-
-<style>
-  .chat-btn {
-    position: fixed; right: 20px; bottom: 20px;
-    width: 44px; height: 44px;
-    background: var(--accent);
-    border: none;
-    border-radius: var(--radius-lg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; cursor: pointer; z-index: 999;
-    transition: all 0.2s;
-    box-shadow: 0 4px 14px var(--accent-dim);
-  }
-  .chat-btn:hover {
-    background: var(--accent-hover);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px var(--accent-dim);
-  }
-  .notif {
-    position: absolute; bottom: 100%; right: 100%;
-    background: var(--red);
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 1px 5px;
-    border-radius: 9999px;
-    margin-right: -8px;
-    margin-bottom: -8px;
-    color: white;
-  }
-  .chat-popup {
-    position: fixed; right: 20px; bottom: 20px;
-    width: 360px; height: 500px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl); z-index: 1000;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    box-shadow: var(--shadow-lg);
-  }
-  .chat-header {
-    padding: 16px 20px;
-    display: flex; justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-  }
-  .chat-title {
-    font-size: 0.9375rem;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-  .close-btn {
-    cursor: pointer;
-    color: var(--text-dim);
-    font-size: 14px;
-    transition: color 0.15s;
-    width: 28px; height: 28px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: var(--radius-sm);
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-  }
-  .close-btn:hover { color: var(--text-primary); border-color: var(--border-2); }
-  .chat-messages {
-    flex: 1; overflow: auto; padding: 16px 20px;
-  }
-  .msg { margin-bottom: 14px; }
-  .msg-header {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-bottom: 3px;
-  }
-  .msg-user {
-    font-weight: 600;
-    font-size: 0.8125rem;
-  }
-  .msg-time {
-    font-size: 0.6875rem;
-    color: var(--text-dim);
-    font-family: var(--mono);
-  }
-  .msg-text {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
-  .chat-input {
-    display: flex; padding: 12px 16px; gap: 8px;
-    border-top: 1px solid var(--border);
-    background: var(--surface-2);
-  }
-  .chat-input input { flex: 1; }
-  .send-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-  }
-  .send-btn:hover:not(:disabled) {
-    background: var(--accent-hover);
-  }
-  .send-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-  @media (max-width: 800px) {
-    .chat-btn { display: none; }
-  }
-</style>

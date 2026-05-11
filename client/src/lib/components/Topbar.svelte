@@ -29,21 +29,33 @@
   }
 </script>
 
-<header class="topbar">
-  <div class="topbar-left">
-    <div class="topbar-brand" onclick={() => goto('/')} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && goto('/')}>
-      <span class="brand-icon">♪</span>
-      <span class="brand-name">blindtest</span>
-      <span class="brand-badge">v2</span>
+<header class="z-[1000] flex h-14 items-center justify-between border-b border-border bg-surface px-5 shadow-card">
+  <div class="flex items-center gap-3">
+    <div
+      class="flex cursor-pointer items-center gap-1.5 no-underline"
+      onclick={() => goto('/')}
+      role="button"
+      tabindex="0"
+      onkeydown={(e) => e.key === 'Enter' && goto('/')}
+    >
+      <span class="text-[1.2rem] text-accent">♪</span>
+      <span class="text-base font-bold tracking-[-0.02em] text-text-primary">blindtest</span>
+      <span class="rounded-full border px-1.5 py-px text-[0.625rem] font-semibold uppercase tracking-[0.05em] text-accent" style="background: var(--accent-dim); border-color: var(--accent-border);">
+        v2
+      </span>
     </div>
-    <button class="nav-pill" onclick={() => goto('/canvas')}>
+
+    <button
+      class="rounded-full border border-border bg-bg px-3.5 py-[5px] text-[0.8125rem] font-medium text-text-secondary transition-all duration-200 hover:text-accent hover:[background:var(--accent-dim)] hover:[border-color:var(--accent-border)]"
+      onclick={() => goto('/canvas')}
+    >
       Canvas
     </button>
   </div>
 
-  <div class="topbar-right">
-    <div class="volume-wrap hide-mobile">
-      <span class="vol-icon">🔊</span>
+  <div class="flex items-center gap-2.5">
+    <div class="hide-mobile flex items-center gap-1.5 rounded-full border border-border bg-bg px-3 py-[5px]">
+      <span class="text-[13px] opacity-60">🔊</span>
       <input
         type="range"
         min="0" max="100"
@@ -53,7 +65,11 @@
       />
     </div>
 
-    <button class="theme-toggle" onclick={toggleTheme} title="Toggle theme">
+    <button
+      class="flex h-[34px] w-[34px] items-center justify-center rounded-md border border-border bg-surface-2 p-0 text-base text-text-secondary transition-all duration-200 hover:text-accent hover:[background:var(--accent-dim)] hover:[border-color:var(--accent-border)]"
+      onclick={toggleTheme}
+      title="Toggle theme"
+    >
       {$theme === 'dark' ? '☀' : '☾'}
     </button>
 
@@ -62,9 +78,9 @@
         Sign in
       </button>
     {:else if $user}
-      <div style="position:relative">
+      <div class="relative">
         <div
-          class="profile-bubble"
+          class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[0.8rem] font-bold text-white transition-[opacity,box-shadow] duration-150 hover:opacity-90 hover:[box-shadow:0_0_0_3px_var(--accent-dim)]"
           style="background:{stringToColor($user.name)}"
           onclick={() => showProfile = !showProfile}
         >
@@ -72,20 +88,20 @@
         </div>
 
         {#if showProfile}
-          <div class="profile-popup">
-            <div class="profile-name">{$user.name}</div>
-            <div class="popup-divider"></div>
-            <button class="profile-btn" onclick={() => nav('/statistics')}>📊 Statistics</button>
+          <div class="absolute right-0 top-[calc(100%+10px)] z-[1001] flex min-w-[210px] flex-col gap-0.5 rounded-lg border border-border bg-surface p-2 shadow-panel">
+            <div class="px-3 py-2 pb-1 text-sm font-semibold text-text-primary">{$user.name}</div>
+            <div class="my-1 h-px bg-border"></div>
+            <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/statistics')}>📊 Statistics</button>
             {#if $userPermission >= 2}
-              <button class="profile-btn" onclick={() => nav('/manage-audios')}>🎵 Manage audios</button>
-              <button class="profile-btn" onclick={() => nav('/suggestions')}>💬 Suggestions</button>
+              <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/manage-audios')}>🎵 Manage audios</button>
+              <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/suggestions')}>💬 Suggestions</button>
             {/if}
-            <button class="profile-btn" onclick={() => nav('/custom-blindtests')}>🎶 Create blindtest</button>
+            <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/custom-blindtests')}>🎶 Create blindtest</button>
             {#if $userPermission >= 3}
-              <button class="profile-btn" onclick={() => nav('/manage-users')}>👥 Manage users</button>
+              <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/manage-users')}>👥 Manage users</button>
             {/if}
-            <div class="popup-divider"></div>
-            <button class="profile-btn danger" onclick={logOut}>🚪 Log out</button>
+            <div class="my-1 h-px bg-border"></div>
+            <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-red transition-[background,color] duration-150 hover:text-red hover:[background:rgba(220,38,38,0.06)]" onclick={logOut}>🚪 Log out</button>
           </div>
         {/if}
       </div>
@@ -96,173 +112,3 @@
 {#if showLogin}
   <LoginPopup onclose={() => showLogin = false} />
 {/if}
-
-<style>
-  .topbar {
-    border-bottom: 1px solid var(--border);
-    padding: 0 20px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface);
-    z-index: 1000;
-    box-shadow: var(--shadow-card);
-  }
-  .topbar-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .topbar-brand {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    text-decoration: none;
-  }
-  .brand-icon {
-    font-size: 1.2rem;
-    color: var(--accent);
-  }
-  .brand-name {
-    font-family: var(--sans);
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
-  }
-  .brand-badge {
-    font-size: 0.625rem;
-    font-weight: 600;
-    color: var(--accent);
-    background: var(--accent-dim);
-    border: 1px solid var(--accent-border);
-    padding: 1px 6px;
-    border-radius: 9999px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-  .nav-pill {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    padding: 5px 14px;
-    border-radius: 9999px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .nav-pill:hover {
-    background: var(--accent-dim);
-    border-color: var(--accent-border);
-    color: var(--accent);
-  }
-  .volume-wrap {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    padding: 5px 12px;
-    border-radius: 9999px;
-  }
-  .vol-icon {
-    font-size: 13px;
-    opacity: 0.6;
-  }
-  .theme-toggle {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border);
-    background: var(--surface-2);
-    color: var(--text-secondary);
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    padding: 0;
-  }
-  .theme-toggle:hover {
-    border-color: var(--accent-border);
-    background: var(--accent-dim);
-    color: var(--accent);
-  }
-  .profile-bubble {
-    width: 32px; height: 32px;
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center; justify-content: center;
-    color: white; font-weight: 700;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: opacity 0.15s, box-shadow 0.15s;
-  }
-  .profile-bubble:hover {
-    opacity: 0.9;
-    box-shadow: 0 0 0 3px var(--accent-dim);
-  }
-  .profile-popup {
-    position: absolute;
-    top: calc(100% + 10px);
-    right: 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 210px;
-    z-index: 1001;
-  }
-  .profile-name {
-    padding: 8px 12px 4px;
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: var(--text-primary);
-  }
-  .popup-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 4px 0;
-  }
-  .profile-btn {
-    width: 100%;
-    text-align: left;
-    padding: 9px 12px;
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    font-family: var(--sans);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-  .profile-btn:hover {
-    background: var(--surface-2);
-    color: var(--text-primary);
-  }
-  .profile-btn.danger {
-    color: var(--red);
-  }
-  .profile-btn.danger:hover {
-    background: rgba(220, 38, 38, 0.06);
-  }
-
-  @media (max-width: 600px) {
-    .hide-mobile { display: none; }
-  }
-</style>

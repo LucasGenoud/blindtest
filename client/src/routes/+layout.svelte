@@ -45,20 +45,10 @@
 
 <div id="app">
   <Topbar />
-  <div class="app-content">
+  <div class="relative flex flex-1 overflow-hidden bg-bg">
     {@render children()}
   </div>
   {#if $user}
     <ChatDrawer />
   {/if}
 </div>
-
-<style>
-  .app-content {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-    position: relative;
-    background: var(--bg);
-  }
-</style>

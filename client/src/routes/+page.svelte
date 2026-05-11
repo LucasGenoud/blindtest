@@ -9,18 +9,9 @@
   <meta name="description" content="A fun multiplayer blindtest game — guess movies, TV shows, animes, games and more!" />
 </svelte:head>
 
-<div class="homepage">
+<div class="flex h-full w-full flex-1 overflow-hidden">
   {#if $blindtestStatus === 'stopped'}
     <Sidebar />
   {/if}
   <PublicBlindtests />
 </div>
-
-<style>
-  .homepage {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    width: 100%;
-  }
-</style>
