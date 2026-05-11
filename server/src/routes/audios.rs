@@ -379,23 +379,59 @@ pub async fn update_audio(
         _ => return forbidden(),
     };
 
-    let db = db.lock().unwrap();
-    if let Some(ref cat) = body.category {
-        let _ = db.execute("UPDATE audios SET category = ?1 WHERE id = ?2", rusqlite::params![cat, body.id]);
+    // Fetch current video_url and start_time to detect changes
+    let (current_url, current_start_time): (String, i64) = {
+        let db_locked = db.lock().unwrap();
+        match db_locked.query_row(
+            "SELECT video_url, start_time FROM audios WHERE id = ?1",
+            rusqlite::params![body.id],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+        ) {
+            Ok(v) => v,
+            Err(_) => return HttpResponse::NotFound().json("Audio not found"),
+        }
+    };
+
+    let new_url = body.video_url.as_deref().unwrap_or(&current_url);
+    let new_start_time = body.start_time.unwrap_or(current_start_time);
+    let needs_reprocess = new_url != current_url || new_start_time != current_start_time;
+
+    {
+        let db_locked = db.lock().unwrap();
+        if let Some(ref cat) = body.category {
+            let _ = db_locked.execute("UPDATE audios SET category = ?1 WHERE id = ?2", rusqlite::params![cat, body.id]);
+        }
+        if let Some(ref answer) = body.answer {
+            let _ = db_locked.execute("UPDATE audios SET answer = ?1 WHERE id = ?2", rusqlite::params![answer, body.id]);
+        }
+        if let Some(ref url) = body.video_url {
+            let _ = db_locked.execute("UPDATE audios SET video_url = ?1 WHERE id = ?2", rusqlite::params![url, body.id]);
+        }
+        if let Some(st) = body.start_time {
+            let _ = db_locked.execute("UPDATE audios SET start_time = ?1 WHERE id = ?2", rusqlite::params![st, body.id]);
+        }
+        if let Some(sup) = body.superflus {
+            let _ = db_locked.execute("UPDATE audios SET superflus = ?1 WHERE id = ?2", rusqlite::params![sup, body.id]);
+        }
+        let _ = db_locked.execute("UPDATE audios SET last_updated_by = ?1 WHERE id = ?2", rusqlite::params![claims.sub, body.id]);
+
+        if needs_reprocess {
+            let _ = db_locked.execute(
+                "UPDATE audios SET processing_status = 'processing', s3_object_key = NULL WHERE id = ?1",
+                rusqlite::params![body.id],
+            );
+        }
     }
-    if let Some(ref answer) = body.answer {
-        let _ = db.execute("UPDATE audios SET answer = ?1 WHERE id = ?2", rusqlite::params![answer, body.id]);
+
+    if needs_reprocess {
+        let db_clone = db.clone();
+        let id_clone = body.id.clone();
+        let video_url = new_url.to_string();
+        let start_time = new_start_time;
+        tokio::spawn(async move {
+            crate::video_processor::process_and_upload_video(db_clone, id_clone, video_url, start_time, "audios").await;
+        });
     }
-    if let Some(ref url) = body.video_url {
-        let _ = db.execute("UPDATE audios SET video_url = ?1 WHERE id = ?2", rusqlite::params![url, body.id]);
-    }
-    if let Some(st) = body.start_time {
-        let _ = db.execute("UPDATE audios SET start_time = ?1 WHERE id = ?2", rusqlite::params![st, body.id]);
-    }
-    if let Some(sup) = body.superflus {
-        let _ = db.execute("UPDATE audios SET superflus = ?1 WHERE id = ?2", rusqlite::params![sup, body.id]);
-    }
-    let _ = db.execute("UPDATE audios SET last_updated_by = ?1 WHERE id = ?2", rusqlite::params![claims.sub, body.id]);
 
     HttpResponse::Ok().json("Audio updated")
 }
