@@ -98,21 +98,17 @@
 
     {#if contributorUsers.length > 0}
       <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Exclude contributors</div>
-      <div class="exclude-users">
+      <select
+        class="exclude-select"
+        multiple
+        onchange={(e) => {
+          selectedDisabled = Array.from(e.currentTarget.selectedOptions).map(o => o.value);
+        }}
+      >
         {#each contributorUsers as user}
-          {@const disabled = selectedDisabled.includes(user._id)}
-          <button
-            class="user-chip {disabled ? 'user-chip--off' : ''}"
-            onclick={() => {
-              if (disabled) selectedDisabled = selectedDisabled.filter(id => id !== user._id);
-              else selectedDisabled = [...selectedDisabled, user._id];
-            }}
-          >
-            {#if disabled}<span class="chip-x">✕</span>{/if}
-            {user.name}
-          </button>
+          <option value={user._id} selected={selectedDisabled.includes(user._id)}>{user.name}</option>
         {/each}
-      </div>
+      </select>
     {/if}
   </div>
 
@@ -129,42 +125,27 @@
 </div>
 
 <style>
-  .exclude-users {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .user-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 9999px;
-    font-size: 0.72rem;
-    font-weight: 500;
+  .exclude-select {
+    width: 100%;
     border: 1px solid var(--border);
+    border-radius: 6px;
     background: var(--surface-2);
     color: var(--text-secondary);
+    font-size: 0.75rem;
+    padding: 4px 2px;
     cursor: pointer;
-    transition: all 0.15s;
+    outline: none;
   }
-  .user-chip:hover {
+  .exclude-select:focus {
     border-color: var(--border-2);
-    background: var(--surface);
   }
-  .user-chip--off {
-    background: rgba(248, 113, 113, 0.1);
-    border-color: rgba(248, 113, 113, 0.4);
+  .exclude-select option {
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .exclude-select option:checked {
+    background: rgba(248, 113, 113, 0.2);
     color: var(--red);
-    text-decoration: line-through;
-    opacity: 0.8;
-  }
-  .user-chip--off:hover {
-    opacity: 1;
-    background: rgba(248, 113, 113, 0.15);
-  }
-  .chip-x {
-    font-size: 0.6rem;
-    line-height: 1;
   }
 </style>
