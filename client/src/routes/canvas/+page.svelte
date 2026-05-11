@@ -234,7 +234,6 @@
     const { x, y } = getCanvasPixel(e);
     if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
     selectedPixel = { x, y };
-    centerOnPixel(selectedPixel);
     sendPosition(selectedPixel);
     debouncedPixelQuery(selectedPixel, e.clientX, e.clientY);
   }
@@ -410,7 +409,6 @@
 
   <!-- Canvas viewport -->
   <div class="canvas-viewport"
-    class:hide-cursor={!!hoverPixel}
     bind:this={viewportEl}
     onwheel={handleWheel}
     onmousedown={handleMouseDown}
