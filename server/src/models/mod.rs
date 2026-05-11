@@ -45,9 +45,6 @@ pub struct Audio {
     pub submitted_by_username: Option<String>,
     #[serde(rename = "addedDate")]
     pub added_date: String,
-    pub rating: Option<f64>,
-    #[serde(rename = "ratingCount")]
-    pub rating_count: Option<i64>,
     pub flagged: Option<Vec<FlaggedAudio>>,
 }
 
@@ -73,15 +70,6 @@ pub struct CustomBlindtest {
     pub added_date: String,
     #[serde(rename = "blindtestList")]
     pub blindtest_list: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Rating {
-    pub id: String,
-    pub audio_id: String,
-    pub user_id: String,
-    pub rating: f64,
-    pub added_date: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

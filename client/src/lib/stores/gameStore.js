@@ -1,7 +1,11 @@
-import { writable } from 'svelte/store';
+import { writable } from "svelte/store";
 
-export const blindtestStatus = writable('stopped'); // stopped, started, paused
-export const volume = writable(typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem('volume') || '50') : 50);
+export const blindtestStatus = writable("stopped"); // stopped, started, paused
+export const volume = writable(
+  typeof localStorage !== "undefined"
+    ? parseInt(localStorage.getItem("volume") || "50")
+    : 50,
+);
 export const timeToGuess = writable(15);
 export const timeWithAnswer = writable(10);
 export const numberOfAudios = writable(30);
@@ -11,7 +15,6 @@ export const prioritizeLessUsedAudios = writable(true);
 export const currentAudioData = writable(null);
 export const currentAudioNumber = writable(0);
 export const showAnswer = writable(false);
-export const audioRating = writable(null);
 export const disabledUsers = writable([]);
 export const dataCategories = writable({
   movies: 100,
@@ -27,7 +30,7 @@ export const dataCategories = writable({
 
 // Persist volume
 volume.subscribe((val) => {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('volume', String(val));
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem("volume", String(val));
   }
 });

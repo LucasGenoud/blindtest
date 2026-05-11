@@ -4,7 +4,7 @@
   import { getApi } from '$lib/api.js';
   import { getVideoId, categoryListValueLabel } from '$lib/misc.js';
   import { token, user, userPermission } from '$lib/stores/userStore.js';
-  import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, audioRating, volume } from '$lib/stores/gameStore.js';
+  import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume } from '$lib/stores/gameStore.js';
   import confetti from 'canvas-confetti';
 
   let { blindtestId = null, randomOrder = false } = $props();
@@ -91,7 +91,6 @@
 
       videoId = data.videoData._id;
       $currentAudioData = data.videoData;
-      $audioRating = data.rating || null;
       passedAudiosIds = [...passedAudiosIds, data.videoData._id];
       currentCategory = categoryListValueLabel.find(c => c.value === data.videoData.category);
       countDown = $timeToGuess;
@@ -198,14 +197,6 @@
     playAudio();
   }
 
-  async function rateAudio(rating) {
-    await fetch(`${getApi()}/rateAudio/${$currentAudioData._id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify({ rating }),
-    });
-  }
-
   function openYoutube() {
     if (player && $currentAudioData) {
       const t = Math.round(player.currentTime || 0);
@@ -241,14 +232,6 @@
         <button class="btn-circle" title="Skip" onclick={skipAudio}>⏭</button>
       {/if}
       <button class="btn-circle" title="YouTube" onclick={openYoutube}>▶️</button>
-
-      {#if $user && $showAnswer}
-        <div class="rating-stars">
-          {#each [1,2,3,4,5] as star}
-            <span class="star" class:filled={star <= ($audioRating?.rating || 0)} onclick={() => rateAudio(star)}>★</span>
-          {/each}
-        </div>
-      {/if}
     </div>
 
     <div class="toolbar-right">
@@ -447,14 +430,6 @@
   .meta-label { color: var(--text-dim); font-weight: 500; }
   .meta-val { color: var(--text-primary); font-weight: 600; }
   .meta-sep { color: var(--text-dim); }
-  .rating-stars { display: flex; gap: 2px; margin-left: 8px; }
-  .star {
-    font-size: 18px; cursor: pointer;
-    color: var(--border-2);
-    transition: color 0.15s;
-  }
-  .star.filled { color: var(--accent); }
-  .star:hover { color: var(--accent); }
   @media screen and (max-width: 700px) {
     .countdown-circle .value { font-size: 64px; }
     .answer-box { font-size: 1.5rem; padding: 14px 24px; }

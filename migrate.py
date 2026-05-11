@@ -103,37 +103,7 @@ def main():
     except Exception as e:
         print("  Error migrating audios:", e)
 
-    # 3. ratings
-    print("Migrating ratings...")
-    try:
-        ratings = json.load(open('restore/ratings.json', encoding='utf-8'))
-        for r in ratings:
-            cur.execute("""
-                INSERT OR REPLACE INTO ratings (
-                    id, audio_id, user_id, rating, added_date
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (
-                r.get('_id'), r.get('audioId'), r.get('userId'),
-                r.get('rating', 0.0), dt_to_iso(r.get('addedDate'))
-            ))
-        conn.commit()
-        print(f"  Inserted {len(ratings)} ratings.")
-    except Exception as e:
-        print("  Error migrating ratings:", e)
-        
-    # Recalculate ratings in audios table
-    print("Recalculating audio ratings...")
-    try:
-        cur.execute("""
-            UPDATE audios SET 
-                rating = (SELECT IFNULL(AVG(rating), 0.0) FROM ratings WHERE audio_id = audios.id),
-                rating_count = (SELECT COUNT(*) FROM ratings WHERE audio_id = audios.id)
-        """)
-        conn.commit()
-    except Exception as e:
-        print("  Error recalculating audio ratings:", e)
-
-    # 4. custom_blindtests
+    # 3. custom_blindtests
     print("Migrating custom blindtests...")
     try:
         cbs = json.load(open('restore/customBlindtests.json', encoding='utf-8'))

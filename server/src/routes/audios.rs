@@ -196,17 +196,9 @@ pub async fn get_next_audio(
             let audio_id = data["videoData"]["_id"].as_str().unwrap_or("").to_string();
             let _ = db.execute("UPDATE audios SET count = count + 1 WHERE id = ?1", [&audio_id]);
 
-            // Add rating for current user if available
+            // Log user stat if available
             if let Some(ref uid) = query.user_id {
                 if !uid.is_empty() {
-                    if let Ok(rating) = db.query_row(
-                        "SELECT rating FROM ratings WHERE audio_id = ?1 AND user_id = ?2",
-                        rusqlite::params![audio_id, uid],
-                        |row| row.get::<_, f64>(0),
-                    ) {
-                        data.as_object_mut().unwrap().insert("rating".to_string(), serde_json::json!({"rating": rating}));
-                    }
-
                     // Log stat
                     let stat_id = uuid::Uuid::new_v4().to_string();
                     let now = chrono::Utc::now().to_rfc3339();

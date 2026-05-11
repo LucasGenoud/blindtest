@@ -1,7 +1,7 @@
 pub mod auth;
 pub mod users;
 pub mod audios;
-pub mod ratings;
+
 pub mod custom_blindtests;
 pub mod canvas;
 pub mod chat;

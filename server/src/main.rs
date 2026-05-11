@@ -68,8 +68,6 @@ async fn main() -> std::io::Result<()> {
             .route("/deleteaudio", web::delete().to(routes::audios::delete_audio))
             .route("/backupaudio", web::get().to(routes::audios::backup_audios))
             .route("/testanswer", web::post().to(routes::audios::test_answer))
-            // Ratings
-            .route("/rateAudio/{audioId}", web::post().to(routes::ratings::rate_audio))
             // Custom blindtests
             .route("/createcustomblindtest", web::post().to(routes::custom_blindtests::create))
             .route("/getcustomblindtests", web::get().to(routes::custom_blindtests::get_user_blindtests))

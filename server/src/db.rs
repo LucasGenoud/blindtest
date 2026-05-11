@@ -10,24 +10,24 @@ pub fn init_db() -> Result<DbPool> {
 
     let schema = include_str!("../migrations/001_init.sql");
     let migration2 = include_str!("../migrations/002_add_s3_key.sql");
+    let migration3 = include_str!("../migrations/003_remove_ratings.sql");
     conn.execute_batch(schema)?;
-    // Apply migration2 safely: execute each statement individually and ignore "duplicate column" errors
-let statements: Vec<&str> = migration2.split(';').filter(|s| !s.trim().is_empty()).collect();
-for stmt in statements {
-    let stmt = stmt.trim();
-    if stmt.is_empty() { continue; }
-    // Execute and ignore error if column already exists
-    if let Err(e) = conn.execute(stmt, []) {
-        // SQLite error code for duplicate column is "SQLITE_ERROR" with message containing "duplicate column"
-        if e.to_string().contains("duplicate column") {
-            // Log and continue
-            log::debug!("Migration ignored duplicate column: {}", stmt);
-        } else {
-            // Propagate other errors
-            return Err(e.into());
+    // Apply migrations safely: execute each statement individually and ignore known benign errors
+    for migration in &[migration2, migration3] {
+        let statements: Vec<&str> = migration.split(';').filter(|s| !s.trim().is_empty()).collect();
+        for stmt in statements {
+            let stmt = stmt.trim();
+            if stmt.is_empty() { continue; }
+            if let Err(e) = conn.execute(stmt, []) {
+                let msg = e.to_string();
+                if msg.contains("duplicate column") || msg.contains("no such column") || msg.contains("no such table") {
+                    log::debug!("Migration ignored: {}", msg);
+                } else {
+                    return Err(e.into());
+                }
+            }
         }
     }
-}
 
     // Initialize canvas if empty
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM canvas_pixels", [], |row| row.get(0))?;
