@@ -61,6 +61,8 @@
   }
 </script>
 
+<svelte:window onclick={(e) => { if (dropdownOpen) handleClickOutside(e); }} />
+
 <div class="sidebar-panel flex h-full w-full shrink-0 flex-col border-r md:w-[300px] md:max-w-[300px]">
   <div class="flex flex-1 flex-col gap-1.5 overflow-auto px-4 py-5">
     <div class="section-label">Configuration</div>
@@ -134,7 +136,6 @@
           </svg>
         </button>
         {#if dropdownOpen}
-          <svelte:window onclick={handleClickOutside} />
           <ul class="contributor-menu" role="listbox" aria-multiselectable="true">
             {#each contributorUsers as u}
               {@const checked = selectedDisabled.includes(u._id)}
