@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { getApi } from '$lib/api.js';
   import { blindtestStatus } from '$lib/stores/gameStore.js';
+  import { Shuffle, Play } from 'lucide-svelte';
 
   let blindtests = $state([]);
 
@@ -36,8 +37,8 @@
         <div class="item-footer">
           <span class="item-user">{bt.username || 'Unknown'}</span>
           <div class="item-actions">
-            <button class="action-btn" title="Shuffle" onclick={() => play(bt, true)}>🔀</button>
-            <button class="action-btn play" title="Play" onclick={() => play(bt)}>▶</button>
+            <button class="action-btn" title="Shuffle" onclick={() => play(bt, true)}><Shuffle size={15} stroke-width={1.8} /></button>
+            <button class="action-btn play" title="Play" onclick={() => play(bt)}><Play size={15} stroke-width={1.8} /></button>
           </div>
         </div>
       </div>

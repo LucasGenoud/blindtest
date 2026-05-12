@@ -1,6 +1,8 @@
 <script>
   import { onMount } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
+  import { ExternalLink } from 'lucide-svelte';
 
   let suggestions = $state([]);
 
@@ -23,10 +25,10 @@
       <thead><tr><th>Category</th><th>Answer</th><th>URL</th><th>Submitted by</th><th>Date</th></tr></thead>
       <tbody>
         {#each suggestions as s (s._id)}
-          <tr>
+          <tr transition:fade={{ duration: 200 }}>
             <td><span class="cat-badge">{s.category}</span></td>
             <td>{s.answer}</td>
-            <td><a href={s.videoUrl} target="_blank">Link</a></td>
+            <td><a href={s.videoUrl} target="_blank">Link <ExternalLink size={11} stroke-width={1.8} /></a></td>
             <td>{s.submittedByUsername || 'Unknown'}</td>
             <td class="mono">{new Date(s.addedDate).toLocaleDateString()}</td>
           </tr>

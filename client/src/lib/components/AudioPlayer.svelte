@@ -6,6 +6,7 @@
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume } from '$lib/stores/gameStore.js';
   import confetti from 'canvas-confetti';
+  import { Pause, Play, EyeOff, SkipForward, ExternalLink, Flag, X, Loader2 } from 'lucide-svelte';
 
   let { blindtestId = null, randomOrder = false } = $props();
 
@@ -223,15 +224,15 @@
   <div class="toolbar">
     <div class="toolbar-left">
       {#if $blindtestStatus === 'started'}
-        <button class="btn-circle" title="Pause" onclick={pauseBlindtest}>⏸</button>
+        <button class="btn-circle" title="Pause" onclick={pauseBlindtest}><Pause size={15} stroke-width={1.8} /></button>
       {:else if $blindtestStatus === 'paused'}
-        <button class="btn-circle" title="Resume" onclick={resumeBlindtest}>▶</button>
+        <button class="btn-circle" title="Resume" onclick={resumeBlindtest}><Play size={15} stroke-width={1.8} /></button>
       {/if}
-      <button class="btn-circle" title="Reveal" disabled={$showAnswer} onclick={revealAnswer}>✨</button>
+      <button class="btn-circle" title="Reveal" disabled={$showAnswer} onclick={revealAnswer}><EyeOff size={15} stroke-width={1.8} /></button>
       {#if $currentAudioNumber < totalAudios}
-        <button class="btn-circle" title="Skip" onclick={skipAudio}>⏭</button>
+        <button class="btn-circle" title="Skip" onclick={skipAudio}><SkipForward size={15} stroke-width={1.8} /></button>
       {/if}
-      <button class="btn-circle" title="YouTube" onclick={openYoutube}>▶️</button>
+      <button class="btn-circle" title="YouTube" onclick={openYoutube}><ExternalLink size={15} stroke-width={1.8} /></button>
     </div>
 
     <div class="toolbar-right">
@@ -240,9 +241,9 @@
       {/if}
       {#if $userPermission > 0 && !audioFlagged}
         <input bind:value={reportMessage} placeholder="Report..." style="width:140px" />
-        <button class="btn-circle warn" title="Flag" onclick={() => flagAudio()}>🚩</button>
+        <button class="btn-circle warn" title="Flag" onclick={() => flagAudio()}><Flag size={15} stroke-width={1.8} /></button>
       {/if}
-      <button class="btn-circle danger" title="Stop" onclick={stopBlindtest}>✕</button>
+      <button class="btn-circle danger" title="Stop" onclick={stopBlindtest}><X size={15} stroke-width={1.8} /></button>
     </div>
   </div>
 
@@ -264,7 +265,7 @@
       {#if videoBuffering}
         <div class="loading-state">
           <div class="loading-text">Loading</div>
-          <div class="loading-spin" style="font-size:48px">💿</div>
+          <Loader2 size={48} class="loading-spin text-accent" stroke-width={1.5} />
         </div>
       {:else}
         <div class="countdown-circle">
@@ -280,7 +281,7 @@
         </div>
       {/if}
     {:else}
-      <div class="answer-box">{$currentAudioData?.answer}</div>
+      <div class="answer-box answer-enter">{$currentAudioData?.answer}</div>
     {/if}
 
     <!-- Native Video player (always rendered, visibility toggled) -->
@@ -312,6 +313,10 @@
     justify-content: space-between;
     padding: 10px 16px;
     gap: 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+    animation: pageEnter 200ms var(--easing-primary) forwards;
     border-bottom: 1px solid var(--glass-border);
     background: var(--glass-bg);
     backdrop-filter: blur(var(--glass-blur));
@@ -353,6 +358,18 @@
     background: var(--accent);
     transition: width 0.3s ease;
     border-radius: 0 2px 2px 0;
+    position: relative;
+  }
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent), 0 0 16px var(--accent-dim);
   }
   .blindtest-main {
     flex: 1; display: flex; flex-direction: column;
@@ -407,6 +424,9 @@
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
     pointer-events: none;
   }
+  .answer-enter {
+    animation: answerReveal 300ms var(--easing-spring) forwards;
+  }
   .yt-wrapper {
     width: 80%; max-width: 800px; aspect-ratio: 16/9;
     pointer-events: none; display: none;
@@ -419,6 +439,16 @@
     width: 100%; height: 100%; object-fit: cover;
   }
   .category-label {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 8px 20px;
+    background: var(--surface-raised, var(--surface));
+    border: 2px solid var(--accent);
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    box-shadow: var(--shadow-card);
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--text-secondary);
@@ -452,7 +482,7 @@
   @media screen and (max-width: 700px) {
     .countdown-circle .value { font-size: 64px; }
     .answer-box { font-size: 1.5rem; padding: 14px 24px; }
-    .category-label { font-size: 0.75rem; }
+    .category-label { font-size: 0.875rem; padding: 6px 14px; }
     .toolbar { flex-wrap: wrap; }
   }
 </style>

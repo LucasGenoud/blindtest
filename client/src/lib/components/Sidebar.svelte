@@ -5,6 +5,7 @@
   import { getApi } from '$lib/api.js';
   import { categoryListKeyLabel } from '$lib/misc.js';
   import { onMount } from 'svelte';
+  import { Play } from 'lucide-svelte';
 
   let contributorUsers = $state([]);
   let selectedDisabled = $state([]);
@@ -160,10 +161,12 @@
     <div class="text-center text-xs text-text-dim">
       ~{estimatedTime()} min estimated
     </div>
-    <button class="w-full rounded-md px-3 py-3 text-[0.9rem] font-semibold tracking-[0.01em] text-white shadow-[0_2px_8px_var(--accent-dim)] transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none [background:var(--accent)] hover:-translate-y-px hover:[background:var(--accent-hover)] hover:[box-shadow:0_4px_14px_var(--accent-dim)] disabled:hover:translate-y-0 disabled:hover:[background:var(--accent)] disabled:hover:[box-shadow:none]"
+    <button
+      class="w-full flex items-center justify-center gap-2 rounded-md px-3 py-3 text-[0.9rem] font-semibold tracking-[0.01em] text-white shadow-[0_2px_8px_var(--accent-dim)] transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none [background:var(--accent)] hover:-translate-y-px hover:[background:var(--accent-hover)] hover:[box-shadow:0_4px_14px_var(--accent-dim)] disabled:hover:translate-y-0 disabled:hover:[background:var(--accent)] disabled:hover:[box-shadow:none]"
+      class:btn-pulse={!!getTotal()}
       disabled={!getTotal()}
       onclick={startBlindtest}>
-      Start blindtest
+      <Play size={16} stroke-width={2} /> Start blindtest
     </button>
   </div>
 </div>
