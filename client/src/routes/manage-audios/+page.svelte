@@ -1,9 +1,11 @@
 <script>
   import { onMount } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
   import { token, userPermission } from '$lib/stores/userStore.js';
   import { goto } from '$app/navigation';
   import { categoryListValueLabel } from '$lib/misc.js';
+  import { Play, ExternalLink, Pencil, Trash2, X, Search, Flag, ChevronDown, ChevronUp, Download } from 'lucide-svelte';
 
   let audios = $state([]);
   let search = $state('');
@@ -93,8 +95,8 @@
   }
 
   function sortIcon(key) {
-    if (sortKey !== key) return '⇅';
-    return sortDir === 'asc' ? '↑' : '↓';
+    if (sortKey !== key) return 'neutral';
+    return sortDir;
   }
 
   async function addAudio() {
@@ -161,10 +163,10 @@
   }
 
   function getStatusLabel(status) {
-    if (status === 'ready') return '✓ S3';
-    if (status === 'processing') return '⟳ Processing';
-    if (status === 'error') return '✕ Error';
-    return '? Unknown';
+    if (status === 'ready') return 'Ready';
+    if (status === 'processing') return 'Processing';
+    if (status === 'error') return 'Error';
+    return 'Unknown';
   }
 
   const counts = $derived.by(() => ({
@@ -186,11 +188,17 @@
       <span class="total-badge">{audios.length} tracks</span>
     </div>
     <div class="header-actions">
-      <button class="btn-primary" onclick={() => showAddForm = !showAddForm}>
-        {showAddForm ? '✕ Cancel' : '+ Add Audio'}
+      <button class="btn-primary btn-icon" onclick={() => showAddForm = !showAddForm}>
+        {#if showAddForm}
+          <X size={14} stroke-width={1.8} /> Cancel
+        {:else}
+          + Add Audio
+        {/if}
       </button>
       {#if $userPermission >= 3}
-        <button class="btn-primary" onclick={downloadBackup}>⬇ Backup</button>
+        <button class="btn-primary btn-icon" onclick={downloadBackup}>
+          <Download size={14} stroke-width={1.8} /> Backup
+        </button>
       {/if}
     </div>
   </div>
@@ -211,7 +219,7 @@
     </button>
     {#if counts.flagged > 0}
       <div class="stat-chip flag-chip">
-        🚩 Flagged <strong>{counts.flagged}</strong>
+        <Flag size={13} stroke-width={1.8} /> Flagged <strong>{counts.flagged}</strong>
       </div>
     {/if}
     <!-- Extra filters -->
@@ -227,14 +235,14 @@
       <option value="yes">Superflus: yes</option>
     </select>
     <div class="search-wrap">
-      <span class="search-icon">⌕</span>
+      <Search size={14} stroke-width={1.8} class="search-icon" />
       <input bind:value={search} placeholder="Search answer, category, user…" class="search-input" />
     </div>
   </div>
 
   <!-- Add form -->
   {#if showAddForm}
-    <div class="add-card">
+    <div class="add-card" in:fly={{ y: -8, duration: 150 }}>
       <div class="add-card-title">New Audio</div>
       <div class="form-grid">
         <select bind:value={newAudio.category}>
@@ -257,7 +265,7 @@
   <div class="table-wrap">
     {#if loading}
       <div class="loading-state">
-        <span class="loading-spin">◌</span> Loading audios…
+        <span class="loading-spin">⟳</span> Loading audios…
       </div>
     {:else if filteredAudios().length === 0}
       <div class="empty-state">No audios match your filters.</div>
@@ -265,20 +273,20 @@
       <table>
         <thead>
           <tr>
-            <th><button class="sort-btn" onclick={() => setSort('processingStatus')}>Status {sortIcon('processingStatus')}</button></th>
-            <th><button class="sort-btn" onclick={() => setSort('category')}>Category {sortIcon('category')}</button></th>
-            <th><button class="sort-btn" onclick={() => setSort('answer')}>Answer {sortIcon('answer')}</button></th>
-            <th><button class="sort-btn" onclick={() => setSort('startTime')}>Start {sortIcon('startTime')}</button></th>
-            <th><button class="sort-btn" onclick={() => setSort('count')}>Plays {sortIcon('count')}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('processingStatus')}>Status {#if sortIcon('processingStatus') === 'asc'}<ChevronUp size={11} stroke-width={1.8} />{:else if sortIcon('processingStatus') === 'desc'}<ChevronDown size={11} stroke-width={1.8} />{/if}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('category')}>Category {#if sortIcon('category') === 'asc'}<ChevronUp size={11} stroke-width={1.8} />{:else if sortIcon('category') === 'desc'}<ChevronDown size={11} stroke-width={1.8} />{/if}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('answer')}>Answer {#if sortIcon('answer') === 'asc'}<ChevronUp size={11} stroke-width={1.8} />{:else if sortIcon('answer') === 'desc'}<ChevronDown size={11} stroke-width={1.8} />{/if}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('startTime')}>Start {#if sortIcon('startTime') === 'asc'}<ChevronUp size={11} stroke-width={1.8} />{:else if sortIcon('startTime') === 'desc'}<ChevronDown size={11} stroke-width={1.8} />{/if}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('count')}>Plays {#if sortIcon('count') === 'asc'}<ChevronUp size={11} stroke-width={1.8} />{:else if sortIcon('count') === 'desc'}<ChevronDown size={11} stroke-width={1.8} />{/if}</button></th>
             <th>Flags</th>
-            <th><button class="sort-btn" onclick={() => setSort('submittedByUsername')}>By {sortIcon('submittedByUsername')}</button></th>
-            <th><button class="sort-btn" onclick={() => setSort('addedDate')}>Added {sortIcon('addedDate')}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('submittedByUsername')}>By {#if sortIcon('submittedByUsername') === 'asc'}<ChevronUp size={11} stroke-width={1.8} />{:else if sortIcon('submittedByUsername') === 'desc'}<ChevronDown size={11} stroke-width={1.8} />{/if}</button></th>
+            <th><button class="sort-btn" onclick={() => setSort('addedDate')}>Added {#if sortIcon('addedDate') === 'asc'}<ChevronUp size={11} stroke-width={1.8} />{:else if sortIcon('addedDate') === 'desc'}<ChevronDown size={11} stroke-width={1.8} />{/if}</button></th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {#each pagedAudios() as audio (audio._id)}
-            <tr class:flagged={audio.flagged?.length > 0}>
+            <tr class:flagged={audio.flagged?.length > 0} transition:fade={{ duration: 150 }}>
               <!-- S3 Status -->
               <td>
                 <span class="status-badge {getStatusColor(audio.processingStatus)}">
@@ -302,7 +310,7 @@
               <td>
                 {#if audio.flagged?.length > 0}
                   <div class="flag-cell">
-                    <span class="flag-count">🚩 {audio.flagged.length}</span>
+                    <span class="flag-count"><Flag size={12} stroke-width={1.8} /> {audio.flagged.length}</span>
                     <button class="btn-xs btn-warning" onclick={() => resetFlag(audio._id)}>Reset</button>
                   </div>
                 {:else}
@@ -317,12 +325,12 @@
               <td>
                 <div class="action-group">
                   {#if audio.processingStatus === 'ready' && audio.s3ObjectKey}
-                    <button class="btn-xs btn-play" title="Preview audio" onclick={() => openPreview(audio)}>▶</button>
+                    <button class="btn-xs btn-play" title="Preview audio" onclick={() => openPreview(audio)}><Play size={11} stroke-width={1.8} /></button>
                   {/if}
-                  <a href={audio.videoUrl} target="_blank" class="btn-xs btn-link" title="Open YouTube">YT</a>
-                  <button class="btn-xs btn-edit" title="Edit" onclick={() => editAudio = {...audio}}>✏</button>
+                  <a href={audio.videoUrl} target="_blank" class="btn-xs btn-link" title="Open YouTube"><ExternalLink size={11} stroke-width={1.8} /></a>
+                  <button class="btn-xs btn-edit" title="Edit" onclick={() => editAudio = {...audio}}><Pencil size={11} stroke-width={1.8} /></button>
                   {#if $userPermission >= 3}
-                    <button class="btn-xs btn-del" title="Delete" onclick={() => deleteAudio(audio._id)}>🗑</button>
+                    <button class="btn-xs btn-del" title="Delete" onclick={() => deleteAudio(audio._id)}><Trash2 size={11} stroke-width={1.8} /></button>
                   {/if}
                 </div>
               </td>
@@ -366,11 +374,11 @@
 
 <!-- Edit Popup -->
 {#if editAudio}
-  <div class="overlay" onclick={(e) => e.target === e.currentTarget && (editAudio = null)}>
-    <div class="popup edit-popup">
+  <div class="overlay" in:fade={{ duration: 150 }} out:fade={{ duration: 100 }} onclick={(e) => e.target === e.currentTarget && (editAudio = null)}>
+    <div class="popup edit-popup" in:fly={{ y: 20, duration: 200 }}>
       <div class="popup-header">
         <span class="popup-title">Edit Audio</span>
-        <button class="close-btn" onclick={() => editAudio = null}>✕</button>
+        <button class="close-btn" onclick={() => editAudio = null}><X size={14} stroke-width={1.8} /></button>
       </div>
       <div class="popup-body">
         <label class="field-label">Category</label>
@@ -397,14 +405,14 @@
 
 <!-- Preview Popup -->
 {#if previewAudio}
-  <div class="overlay" onclick={(e) => e.target === e.currentTarget && closePreview()}>
-    <div class="popup preview-popup">
+  <div class="overlay" in:fade={{ duration: 150 }} out:fade={{ duration: 100 }} onclick={(e) => e.target === e.currentTarget && closePreview()}>
+    <div class="popup preview-popup" in:fly={{ y: 20, duration: 200 }}>
       <div class="popup-header">
         <div class="preview-title-group">
           <span class="cat-badge">{previewAudio.category}</span>
           <span class="popup-title">{previewAudio.answer}</span>
         </div>
-        <button class="close-btn" onclick={closePreview}>✕</button>
+        <button class="close-btn" onclick={closePreview}><X size={14} stroke-width={1.8} /></button>
       </div>
       <div class="video-container">
         <!-- svelte-ignore a11y_media_has_caption -->

@@ -1,10 +1,15 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
   import { colors, debounce } from '$lib/misc.js';
   import { playSelect, playPaint } from '$lib/sound.js';
+  import { Plus, Minus, Home, Grid3X3, Paintbrush } from 'lucide-svelte';
+
+  let paintConfirm = $state(null);
+  let paintConfirmTimer;
 
   const SIZE = 1000;
   const MIN_ZOOM = 0.5;
@@ -230,6 +235,10 @@
     pixelData[idx] = selectedColor.hex;
     setPixelColor(x, y, selectedColor.hex);
     ctx.putImageData(imageData, 0, 0);
+
+    paintConfirm = { x, y, hex: selectedColor.hex };
+    if (paintConfirmTimer) clearTimeout(paintConfirmTimer);
+    paintConfirmTimer = setTimeout(() => paintConfirm = null, 600);
   }
 
   function handleClick(e) {
@@ -476,6 +485,14 @@
       </div>
     {/if}
 
+    <!-- Paint confirmation burst -->
+    {#if paintConfirm && zoom >= 3}
+      {@const pPos = worldToViewport(paintConfirm.x + 0.5, paintConfirm.y + 0.5)}
+      <div class="paint-confirm" style="left:{pPos.x}px;top:{pPos.y}px;transform:translate(-50%,-50%)" out:fade={{ duration: 500 }}>
+        <Paintbrush size={16} stroke-width={1.8} />
+      </div>
+    {/if}
+
     <!-- Other users cursors -->
     {#each Object.values(otherUsers) as u (u.wsId)}
       {#if !$user || u.username !== $user.name}
@@ -504,13 +521,13 @@
 
   <!-- HUD: Zoom controls -->
   <div class="hud-controls">
-    <button class="hud-btn" onclick={zoomOut} title="Zoom out (-)">−</button>
+    <button class="hud-btn" onclick={zoomOut} title="Zoom out (-)"><Minus size={14} stroke-width={1.8} /></button>
     <span class="hud-zoom">{Math.round(zoom * 100)}%</span>
-    <button class="hud-btn" onclick={zoomIn} title="Zoom in (+)">+</button>
+    <button class="hud-btn" onclick={zoomIn} title="Zoom in (+)"><Plus size={14} stroke-width={1.8} /></button>
     <div class="hud-divider"></div>
-    <button class="hud-btn" onclick={centerCanvas} title="Reset view (R)">⌂</button>
-    <button class="hud-btn hud-btn-text" class:active={showGrid} onclick={() => showGrid = !showGrid} title="Toggle grid">
-      Grid
+    <button class="hud-btn" onclick={centerCanvas} title="Reset view (R)"><Home size={14} stroke-width={1.8} /></button>
+    <button class="hud-btn" class:active={showGrid} onclick={() => showGrid = !showGrid} title="Toggle grid">
+      <Grid3X3 size={14} stroke-width={1.8} />
     </button>
     <div class="hud-divider"></div>
     <span class="hud-hint">Click to select · Arrows to move · Space to paint</span>
@@ -645,6 +662,15 @@
   .selected-crosshair.tr { top: -3px; right: -3px; border-width: 2px 2px 0 0; }
   .selected-crosshair.bl { bottom: -3px; left: -3px; border-width: 0 0 2px 2px; }
   .selected-crosshair.br { bottom: -3px; right: -3px; border-width: 0 2px 2px 0; }
+
+  .paint-confirm {
+    position: absolute;
+    pointer-events: none;
+    z-index: 7;
+    animation: paintConfirm 600ms var(--easing-spring) forwards;
+    color: var(--accent);
+    filter: drop-shadow(0 0 6px var(--accent-dim));
+  }
 
   .user-cursor {
     position: absolute; pointer-events: none;

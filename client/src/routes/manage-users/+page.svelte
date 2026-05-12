@@ -1,8 +1,10 @@
 <script>
   import { onMount } from 'svelte';
+  import { fade } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
   import { token, userPermission } from '$lib/stores/userStore.js';
   import { goto } from '$app/navigation';
+  import { Trash2 } from 'lucide-svelte';
 
   let users = $state([]);
 
@@ -43,7 +45,7 @@
     <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Registered</th><th>Actions</th></tr></thead>
     <tbody>
       {#each users as u (u._id)}
-        <tr class:deleted={u.deleted}>
+        <tr class:deleted={u.deleted} transition:fade={{ duration: 200 }}>
           <td class="user-name">{u.name}</td>
           <td>{u.email}</td>
           <td>
@@ -56,7 +58,7 @@
           <td class="mono">{new Date(u.registerDate).toLocaleDateString()}</td>
           <td>
             {#if !u.deleted}
-              <button class="btn-danger sm" onclick={() => deleteUser(u._id)}>🗑</button>
+              <button class="btn-danger sm" onclick={() => deleteUser(u._id)}><Trash2 size={13} stroke-width={1.8} /></button>
             {:else}
               <span class="deleted-label">Deleted</span>
             {/if}

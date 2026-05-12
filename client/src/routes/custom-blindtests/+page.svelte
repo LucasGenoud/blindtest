@@ -1,8 +1,10 @@
 <script>
   import { onMount } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { goto } from '$app/navigation';
+  import { Plus, Pencil, Trash2 } from 'lucide-svelte';
 
   let blindtests = $state([]);
 
@@ -41,7 +43,7 @@
 <div class="manage-page">
   <div class="page-header">
     <h1>My Custom Blindtests</h1>
-    <button class="btn-primary" onclick={create}>+ Create</button>
+    <button class="btn-primary" onclick={create}><Plus size={14} stroke-width={1.8} /> Create</button>
   </div>
 
   {#if blindtests.length === 0}
@@ -50,14 +52,14 @@
 
   <div class="bt-list">
     {#each blindtests as bt (bt._id)}
-      <div class="bt-item">
+      <div class="bt-item" in:fly={{ y: 8, duration: 200, delay: 40 }}>
         <div class="bt-info">
           <div class="bt-name">{bt.name}</div>
           <div class="bt-count">{bt.blindtestList.length} audios</div>
         </div>
         <div class="bt-actions">
-          <button class="btn-primary" onclick={() => goto(`/custom-blindtests/${bt._id}`)}>✏ Edit</button>
-          <button class="btn-danger" onclick={() => deleteBt(bt._id)}>🗑</button>
+          <button class="btn-primary" onclick={() => goto(`/custom-blindtests/${bt._id}`)}><Pencil size={13} stroke-width={1.8} /> Edit</button>
+          <button class="btn-danger" onclick={() => deleteBt(bt._id)}><Trash2 size={13} stroke-width={1.8} /></button>
         </div>
       </div>
     {/each}

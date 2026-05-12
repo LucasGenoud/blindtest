@@ -1,10 +1,12 @@
 <script>
   import { onMount } from 'svelte';
+  import { fade, fly } from 'svelte/transition';
   import { page } from '$app/stores';
   import { getApi } from '$lib/api.js';
   import { token } from '$lib/stores/userStore.js';
   import { goto } from '$app/navigation';
   import { debounce, categoryListValueLabel } from '$lib/misc.js';
+  import { ArrowLeft, X, Search, Plus } from 'lucide-svelte';
 
   let blindtest = $state(null);
   let allAudios = $state([]);
@@ -78,52 +80,56 @@
 
 <div class="editor-page">
   {#if blindtest}
-    <div class="editor-header">
-      <button class="btn-primary" onclick={() => goto('/custom-blindtests')}>← Back</button>
-      <h2>{blindtest.name}</h2>
-      <div class="header-right">
-        {#if saving}<span class="save-indicator">Saving...</span>{/if}
-        <label class="toggle" class:active={blindtest.public}>
-          <input type="checkbox" checked={blindtest.public} onchange={togglePublic} />
-          {blindtest.public ? 'Public' : 'Private'}
-        </label>
-      </div>
-    </div>
-
-    <div class="editor-split">
-      <!-- Pool -->
-      <div class="pool">
-        <div class="panel-header">
-          <input bind:value={search} placeholder="Search audios..." style="flex:1" />
-          <select bind:value={filterCat}>
-            <option value="">All</option>
-            {#each categoryListValueLabel as c}<option value={c.value}>{c.label}</option>{/each}
-          </select>
-        </div>
-        <div class="pool-list">
-          {#each filteredPool().slice(0, 200) as audio (audio._id)}
-            <div class="pool-item" onclick={() => addAudio(audio._id)}>
-              <span class="cat-dot" style="background:{audio.category === 'movies' ? 'var(--red)' : audio.category === 'animes' ? 'var(--blue)' : 'var(--green)'}"></span>
-              <span class="pool-name">{audio.answer}</span>
-            </div>
-          {/each}
+    <div class="editor-content" in:fade={{ duration: 250 }}>
+      <div class="editor-header">
+        <button class="btn-primary" onclick={() => goto('/custom-blindtests')}><ArrowLeft size={14} stroke-width={1.8} /> Back</button>
+        <h2>{blindtest.name}</h2>
+        <div class="header-right">
+          {#if saving}<span class="save-indicator">Saving...</span>{/if}
+          <label class="toggle" class:active={blindtest.public}>
+            <input type="checkbox" checked={blindtest.public} onchange={togglePublic} />
+            {blindtest.public ? 'Public' : 'Private'}
+          </label>
         </div>
       </div>
 
-      <!-- Selected -->
-      <div class="selected">
-        <div class="panel-header">
-          <span class="panel-count">{blindtest.blindtestList.length} selected</span>
+      <div class="editor-split">
+        <!-- Pool -->
+        <div class="pool">
+          <div class="panel-header">
+            <Search size={14} stroke-width={1.8} class="search-icon" />
+            <input bind:value={search} placeholder="Search audios..." style="flex:1" />
+            <select bind:value={filterCat}>
+              <option value="">All</option>
+              {#each categoryListValueLabel as c}<option value={c.value}>{c.label}</option>{/each}
+            </select>
+          </div>
+          <div class="pool-list">
+            {#each filteredPool().slice(0, 200) as audio (audio._id)}
+              <div class="pool-item" onclick={() => addAudio(audio._id)} transition:fade={{ duration: 150 }}>
+                <span class="cat-dot" style="background:{audio.category === 'movies' ? 'var(--red)' : audio.category === 'animes' ? 'var(--blue)' : 'var(--green)'}"></span>
+                <span class="pool-name">{audio.answer}</span>
+                <Plus size={12} stroke-width={1.8} class="add-icon" />
+              </div>
+            {/each}
+          </div>
         </div>
-        <div class="selected-list">
-          {#each blindtest.blindtestList as audioId, i (audioId + i)}
-            <div class="selected-item">
-              <span class="item-num">{i + 1}</span>
-              <span class="item-name">{getAudioName(audioId)}</span>
-              <span class="item-cat">{getAudioCat(audioId)}</span>
-              <button class="remove-btn" onclick={() => removeAudio(audioId)}>✕</button>
-            </div>
-          {/each}
+
+        <!-- Selected -->
+        <div class="selected">
+          <div class="panel-header">
+            <span class="panel-count">{blindtest.blindtestList.length} selected</span>
+          </div>
+          <div class="selected-list">
+            {#each blindtest.blindtestList as audioId, i (audioId + i)}
+              <div class="selected-item" transition:fade={{ duration: 150, delay: 40 }}>
+                <span class="item-num">{i + 1}</span>
+                <span class="item-name">{getAudioName(audioId)}</span>
+                <span class="item-cat">{getAudioCat(audioId)}</span>
+                <button class="remove-btn" onclick={() => removeAudio(audioId)}><X size={11} stroke-width={1.8} /></button>
+              </div>
+            {/each}
+          </div>
         </div>
       </div>
     </div>
@@ -134,6 +140,7 @@
 
 <style>
   .editor-page { height: 100%; width: 100%; display: flex; flex-direction: column; background: var(--bg); }
+  .editor-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .editor-header {
     display: flex;
     align-items: center;
@@ -189,6 +196,18 @@
     transition: background 0.15s;
   }
   .pool-item:hover { background: var(--accent-dim); }
+  .pool-item:hover .add-icon { opacity: 1; }
+  .add-icon {
+    margin-left: auto;
+    opacity: 0;
+    color: var(--accent);
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+  .panel-header .search-icon {
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
   .pool-name {
     color: var(--text-secondary);
     font-size: 0.875rem;
