@@ -1,7 +1,6 @@
 <script>
   import '../app.css';
   import Topbar from '$lib/components/Topbar.svelte';
-  import ChatDrawer from '$lib/components/chat/ChatDrawer.svelte';
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
   import { theme } from '$lib/stores/themeStore.js';
@@ -65,7 +64,4 @@
   <div class="relative flex flex-1 overflow-hidden bg-bg {entering ? 'page-enter' : ''}">
     {@render children()}
   </div>
-  {#if $user}
-    <ChatDrawer />
-  {/if}
 </div>

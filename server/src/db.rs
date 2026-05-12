@@ -11,9 +11,10 @@ pub fn init_db() -> Result<DbPool> {
     let schema = include_str!("../migrations/001_init.sql");
     let migration2 = include_str!("../migrations/002_add_s3_key.sql");
     let migration3 = include_str!("../migrations/003_remove_ratings.sql");
+    let migration4 = include_str!("../migrations/004_remove_chat.sql");
     conn.execute_batch(schema)?;
     // Apply migrations safely: execute each statement individually and ignore known benign errors
-    for migration in &[migration2, migration3] {
+    for migration in &[migration2, migration3, migration4] {
         let statements: Vec<&str> = migration.split(';').filter(|s| !s.trim().is_empty()).collect();
         for stmt in statements {
             let stmt = stmt.trim();

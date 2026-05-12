@@ -304,7 +304,7 @@
 
   // --- Keyboard shortcuts ---
   function handleKeyDown(e) {
-    // Ignore keypresses if user is typing in a chat or input
+    // Ignore keypresses if user is typing in an input
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
       return;
     }

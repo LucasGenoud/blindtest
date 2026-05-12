@@ -73,16 +73,6 @@ pub struct CustomBlindtest {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ChatMessage {
-    pub id: String,
-    pub user_id: String,
-    pub username: String,
-    #[serde(rename = "messageValue")]
-    pub message_value: String,
-    pub date: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Suggestion {
     #[serde(rename = "_id")]
     pub id: String,

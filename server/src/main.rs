@@ -84,9 +84,6 @@ async fn main() -> std::io::Result<()> {
             .route("/getCanvas", web::get().to(routes::canvas::get_canvas))
             .route("/getPixelData", web::get().to(routes::canvas::get_pixel_data))
             .route("/updatePixel", web::post().to(routes::canvas::update_pixel))
-            // Chat
-            .route("/getLatestChatMessages", web::get().to(routes::chat::get_latest))
-            .route("/sendChatMessage", web::post().to(routes::chat::send_message))
             // Suggestions
             .route("/getSuggestions", web::get().to(routes::suggestions::get_suggestions))
             // Media
