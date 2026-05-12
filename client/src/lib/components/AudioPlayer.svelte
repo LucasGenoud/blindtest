@@ -265,7 +265,7 @@
       {#if videoBuffering}
         <div class="loading-state">
           <div class="loading-text">Loading</div>
-          <div class="loading-spin" style="font-size:48px">💿</div>
+          <Loader2 size={48} class="loading-spin text-accent" stroke-width={1.5} />
         </div>
       {:else}
         <div class="countdown-circle">
@@ -281,7 +281,7 @@
         </div>
       {/if}
     {:else}
-      <div class="answer-box">{$currentAudioData?.answer}</div>
+      <div class="answer-box answer-enter">{$currentAudioData?.answer}</div>
     {/if}
 
     <!-- Native Video player (always rendered, visibility toggled) -->
@@ -316,6 +316,7 @@
     border-bottom: 1px solid var(--border);
     background: var(--surface);
     box-shadow: var(--shadow-card);
+    animation: pageEnter 200ms var(--easing-primary) forwards;
   }
   .toolbar-left, .toolbar-right {
     display: flex;
@@ -352,6 +353,18 @@
     background: var(--accent);
     transition: width 0.3s ease;
     border-radius: 0 2px 2px 0;
+    position: relative;
+  }
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent), 0 0 16px var(--accent-dim);
   }
   .blindtest-main {
     flex: 1; display: flex; flex-direction: column;
@@ -393,6 +406,9 @@
     border-radius: var(--radius-xl);
     letter-spacing: -0.02em;
     box-shadow: 0 0 0 4px var(--accent-dim);
+  }
+  .answer-enter {
+    animation: answerReveal 300ms var(--easing-spring) forwards;
   }
   .yt-wrapper {
     width: 80%; max-width: 800px; aspect-ratio: 16/9;
