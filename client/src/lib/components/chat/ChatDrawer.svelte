@@ -90,10 +90,8 @@
   {/if}
 
   {#if showChat}
-    <div class="fixed bottom-5 right-5 z-[1000] flex h-[500px] w-[360px] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-panel" in:slide={{ duration: 200 }} out:fade={{ duration: 100 }}>
-      <div class="flex items-center justify-between border-b border-border bg-surface px-5 py-4 shrink-0">
-    <div class="chat-panel fixed bottom-5 right-5 z-[1000] flex h-[500px] w-[360px] flex-col overflow-hidden rounded-xl border">
-      <div class="chat-header flex items-center justify-between border-b px-5 py-4">
+    <div class="chat-panel fixed bottom-5 right-5 z-[1000] flex h-[500px] w-[360px] flex-col overflow-hidden rounded-xl border" in:slide={{ duration: 200 }} out:fade={{ duration: 100 }}>
+      <div class="chat-header flex items-center justify-between border-b border-border bg-surface px-5 py-4 shrink-0">
         <span class="text-[0.9375rem] font-bold text-text-primary">Chat</span>
         <button class="flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm border border-border bg-surface-2 text-sm text-text-dim transition-colors duration-150 hover:border-border-2 hover:text-text-primary" onclick={() => showChat = false} aria-label="Close chat"><X size={12} stroke-width={1.8} /></button>
       </div>
@@ -108,7 +106,7 @@
           </div>
         {/each}
       </div>
-      <div class="absolute bottom-0 left-0 right-0 flex gap-2 border-t border-border bg-surface-2 px-4 py-3">
+      <div class="chat-footer absolute bottom-0 left-0 right-0 flex gap-2 border-t border-border bg-surface-2 px-4 py-3">
         <input
           bind:value={messageText}
           placeholder="Message..."
@@ -121,10 +119,6 @@
           disabled={!messageText.trim()}
           aria-label="Send message"
         ><Send size={14} stroke-width={1.8} /></button>
-      <div class="chat-footer flex gap-2 border-t px-4 py-3">
-        <input bind:value={messageText} placeholder="Message..."
-          onkeydown={(e) => { e.stopPropagation(); if (e.key === 'Enter') sendMessage(); }} />
-        <button class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 [background:var(--accent)] hover:[background:var(--accent-hover)] disabled:hover:[background:var(--accent)]" onclick={sendMessage} disabled={!messageText}>➤</button>
       </div>
     </div>
   {/if}
