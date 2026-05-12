@@ -4,6 +4,7 @@
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
   import { colors, debounce } from '$lib/misc.js';
+  import { playSelect, playPaint } from '$lib/sound.js';
 
   const SIZE = 1000;
   const MIN_ZOOM = 0.5;
@@ -212,6 +213,8 @@
     if (!$token) return;
     if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
 
+    playPaint();
+
     fetch(`${getApi()}/updatePixel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: $token },
@@ -236,6 +239,7 @@
     selectedPixel = { x, y };
     sendPosition(selectedPixel);
     debouncedPixelQuery(selectedPixel, e.clientX, e.clientY);
+    playSelect();
   }
 
   // --- Touch support ---
