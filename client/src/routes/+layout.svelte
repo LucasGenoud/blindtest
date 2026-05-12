@@ -8,8 +8,25 @@
   import { connectWebSocket } from '$lib/websocket.js';
   import { getApi } from '$lib/api.js';
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
 
   let { children } = $props();
+
+  let prevPath = $state('');
+  let entering = $state(false);
+
+  $effect(() => {
+    const current = $page.url.pathname;
+    if (current !== prevPath && prevPath !== '') {
+      entering = true;
+      prevPath = current;
+      const timeout = setTimeout(() => entering = false, 160);
+      return () => clearTimeout(timeout);
+    }
+    if (prevPath === '') {
+      prevPath = current;
+    }
+  });
 
   // Apply theme on mount and whenever it changes
   $effect(() => {
@@ -45,7 +62,7 @@
 
 <div id="app">
   <Topbar />
-  <div class="relative flex flex-1 overflow-hidden bg-bg">
+  <div class="relative flex flex-1 overflow-hidden bg-bg {entering ? 'page-enter' : ''}">
     {@render children()}
   </div>
   {#if $user}
