@@ -71,7 +71,11 @@
       onclick={toggleTheme}
       title="Toggle theme"
     >
-      {$theme === 'dark' ? <Sun size={16} stroke-width={1.8} /> : <Moon size={16} stroke-width={1.8} />}
+      {#if $theme === 'dark'}
+        <Sun size={16} stroke-width={1.8} />
+      {:else}
+        <Moon size={16} stroke-width={1.8} />
+      {/if}
     </button>
 
     {#if !$token}
