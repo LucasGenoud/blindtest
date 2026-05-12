@@ -405,15 +405,16 @@
     width: 100%; height: 100%; object-fit: cover;
   }
   .category-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-dim);
-    padding: 6px 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 8px 20px;
+    background: var(--surface-raised, var(--surface));
+    border: 2px solid var(--accent);
     border-radius: 9999px;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
+    box-shadow: var(--shadow-card);
   }
   .audio-meta {
     position: fixed; bottom: 16px;
@@ -433,7 +434,7 @@
   @media screen and (max-width: 700px) {
     .countdown-circle .value { font-size: 64px; }
     .answer-box { font-size: 1.5rem; padding: 14px 24px; }
-    .category-label { font-size: 0.75rem; }
+    .category-label { font-size: 0.875rem; padding: 6px 14px; }
     .toolbar { flex-wrap: wrap; }
   }
 </style>
