@@ -6,6 +6,7 @@
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume } from '$lib/stores/gameStore.js';
   import confetti from 'canvas-confetti';
+  import { Pause, Play, EyeOff, SkipForward, ExternalLink, Flag, X, Loader2 } from 'lucide-svelte';
 
   let { blindtestId = null, randomOrder = false } = $props();
 
@@ -223,15 +224,15 @@
   <div class="toolbar">
     <div class="toolbar-left">
       {#if $blindtestStatus === 'started'}
-        <button class="btn-circle" title="Pause" onclick={pauseBlindtest}>⏸</button>
+        <button class="btn-circle" title="Pause" onclick={pauseBlindtest}><Pause size={15} stroke-width={1.8} /></button>
       {:else if $blindtestStatus === 'paused'}
-        <button class="btn-circle" title="Resume" onclick={resumeBlindtest}>▶</button>
+        <button class="btn-circle" title="Resume" onclick={resumeBlindtest}><Play size={15} stroke-width={1.8} /></button>
       {/if}
-      <button class="btn-circle" title="Reveal" disabled={$showAnswer} onclick={revealAnswer}>✨</button>
+      <button class="btn-circle" title="Reveal" disabled={$showAnswer} onclick={revealAnswer}><EyeOff size={15} stroke-width={1.8} /></button>
       {#if $currentAudioNumber < totalAudios}
-        <button class="btn-circle" title="Skip" onclick={skipAudio}>⏭</button>
+        <button class="btn-circle" title="Skip" onclick={skipAudio}><SkipForward size={15} stroke-width={1.8} /></button>
       {/if}
-      <button class="btn-circle" title="YouTube" onclick={openYoutube}>▶️</button>
+      <button class="btn-circle" title="YouTube" onclick={openYoutube}><ExternalLink size={15} stroke-width={1.8} /></button>
     </div>
 
     <div class="toolbar-right">
@@ -240,9 +241,9 @@
       {/if}
       {#if $userPermission > 0 && !audioFlagged}
         <input bind:value={reportMessage} placeholder="Report..." style="width:140px" />
-        <button class="btn-circle warn" title="Flag" onclick={() => flagAudio()}>🚩</button>
+        <button class="btn-circle warn" title="Flag" onclick={() => flagAudio()}><Flag size={15} stroke-width={1.8} /></button>
       {/if}
-      <button class="btn-circle danger" title="Stop" onclick={stopBlindtest}>✕</button>
+      <button class="btn-circle danger" title="Stop" onclick={stopBlindtest}><X size={15} stroke-width={1.8} /></button>
     </div>
   </div>
 
