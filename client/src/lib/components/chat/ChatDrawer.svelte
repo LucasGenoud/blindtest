@@ -92,6 +92,8 @@
   {#if showChat}
     <div class="fixed bottom-5 right-5 z-[1000] flex h-[500px] w-[360px] flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-panel" in:slide={{ duration: 200 }} out:fade={{ duration: 100 }}>
       <div class="flex items-center justify-between border-b border-border bg-surface px-5 py-4 shrink-0">
+    <div class="chat-panel fixed bottom-5 right-5 z-[1000] flex h-[500px] w-[360px] flex-col overflow-hidden rounded-xl border">
+      <div class="chat-header flex items-center justify-between border-b px-5 py-4">
         <span class="text-[0.9375rem] font-bold text-text-primary">Chat</span>
         <button class="flex h-7 w-7 cursor-pointer items-center justify-center rounded-sm border border-border bg-surface-2 text-sm text-text-dim transition-colors duration-150 hover:border-border-2 hover:text-text-primary" onclick={() => showChat = false} aria-label="Close chat"><X size={12} stroke-width={1.8} /></button>
       </div>
@@ -119,7 +121,42 @@
           disabled={!messageText.trim()}
           aria-label="Send message"
         ><Send size={14} stroke-width={1.8} /></button>
+      <div class="chat-footer flex gap-2 border-t px-4 py-3">
+        <input bind:value={messageText} placeholder="Message..."
+          onkeydown={(e) => { e.stopPropagation(); if (e.key === 'Enter') sendMessage(); }} />
+        <button class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 [background:var(--accent)] hover:[background:var(--accent-hover)] disabled:hover:[background:var(--accent)]" onclick={sendMessage} disabled={!messageText}>➤</button>
       </div>
     </div>
   {/if}
 </div>
+
+<style>
+  .chat-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    position: relative;
+  }
+
+  .chat-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .chat-header {
+    background: rgba(255, 255, 255, 0.15);
+    border-bottom-color: var(--glass-border);
+  }
+
+  .chat-footer {
+    background: rgba(255, 255, 255, 0.1);
+    border-top-color: var(--glass-border);
+  }
+</style>

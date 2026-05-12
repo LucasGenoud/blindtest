@@ -9,10 +9,26 @@
 
   let contributorUsers = $state([]);
   let selectedDisabled = $state([]);
+  let dropdownOpen = $state(false);
+  let dropdownEl = $state(null);
 
   $effect(() => {
     $disabledUsers = [...selectedDisabled];
   });
+
+  function toggleContributor(id) {
+    if (selectedDisabled.includes(id)) {
+      selectedDisabled = selectedDisabled.filter(x => x !== id);
+    } else {
+      selectedDisabled = [...selectedDisabled, id];
+    }
+  }
+
+  function handleClickOutside(e) {
+    if (dropdownEl && !dropdownEl.contains(e.target)) {
+      dropdownOpen = false;
+    }
+  }
 
   onMount(async () => {
     try {
@@ -46,7 +62,9 @@
   }
 </script>
 
-<div class="flex h-full w-full shrink-0 flex-col border-r border-border bg-surface md:w-[300px] md:max-w-[300px]">
+<svelte:window onclick={(e) => { if (dropdownOpen) handleClickOutside(e); }} />
+
+<div class="sidebar-panel flex h-full w-full shrink-0 flex-col border-r md:w-[300px] md:max-w-[300px]">
   <div class="flex flex-1 flex-col gap-1.5 overflow-auto px-4 py-5">
     <div class="section-label">Configuration</div>
 
@@ -99,25 +117,47 @@
 
     {#if contributorUsers.length > 0}
       <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Exclude contributors</div>
-      <div class="contributor-list">
-        {#each contributorUsers as u}
-          {@const excluded = selectedDisabled.includes(u._id)}
-          <button
-            class="contributor-btn"
-            class:excluded
-            onclick={() => {
-              if (excluded) selectedDisabled = selectedDisabled.filter(id => id !== u._id);
-              else selectedDisabled = [...selectedDisabled, u._id];
-            }}
-          >
-            {u.name}
-          </button>
-        {/each}
+      <div class="contributor-dropdown" bind:this={dropdownEl}>
+        <button
+          type="button"
+          class="contributor-trigger"
+          onclick={() => dropdownOpen = !dropdownOpen}
+          aria-haspopup="listbox"
+          aria-expanded={dropdownOpen}
+        >
+          <span>
+            {#if selectedDisabled.length === 0}
+              None excluded
+            {:else}
+              {selectedDisabled.length} excluded
+            {/if}
+          </span>
+          <svg class="chevron" class:open={dropdownOpen} width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        {#if dropdownOpen}
+          <ul class="contributor-menu" role="listbox" aria-multiselectable="true">
+            {#each contributorUsers as u}
+              {@const checked = selectedDisabled.includes(u._id)}
+              <li role="option" aria-selected={checked}>
+                <label class="contributor-option" class:selected={checked}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onchange={() => toggleContributor(u._id)}
+                  />
+                  <span>{u.name}</span>
+                </label>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
     {/if}
   </div>
 
-  <div class="flex flex-col gap-3 border-t border-border bg-surface-2 p-4">
+  <div class="sidebar-footer flex flex-col gap-3 border-t p-4">
     <div class="text-center text-xs text-text-dim">
       ~{estimatedTime()} min estimated
     </div>
@@ -132,28 +172,95 @@
 </div>
 
 <style>
-  .contributor-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+  .sidebar-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-right-color: var(--glass-border);
   }
-  .contributor-btn {
-    padding: 3px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
+
+  .sidebar-footer {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-top-color: var(--glass-border);
+  }
+
+  [data-theme='dark'] .sidebar-footer {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .contributor-dropdown {
+    position: relative;
+    width: 100%;
+  }
+  .contributor-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 10px;
     background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
     color: var(--text-secondary);
     font-size: 0.75rem;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    text-align: left;
+    transition: border-color 0.15s;
   }
-  .contributor-btn:hover {
+  .contributor-trigger:hover,
+  .contributor-trigger:focus-visible {
     border-color: var(--border-2);
-    color: var(--text);
+    outline: none;
   }
-  .contributor-btn.excluded {
-    background: rgba(248, 113, 113, 0.15);
-    border-color: var(--red);
+  .chevron {
+    flex-shrink: 0;
+    transition: transform 0.15s;
+    color: var(--text-dim);
+  }
+  .chevron.open {
+    transform: rotate(180deg);
+  }
+  .contributor-menu {
+    position: absolute;
+    z-index: 50;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: var(--shadow-lg);
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .contributor-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    transition: background 0.1s;
+    user-select: none;
+    width: 100%;
+  }
+  .contributor-option:hover {
+    background: var(--surface-2);
+  }
+  .contributor-option.selected {
     color: var(--red);
+  }
+  .contributor-option input[type="checkbox"] {
+    accent-color: var(--red);
+    width: 13px;
+    height: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
   }
 </style>

@@ -317,6 +317,11 @@
     background: var(--surface);
     box-shadow: var(--shadow-card);
     animation: pageEnter 200ms var(--easing-primary) forwards;
+    border-bottom: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 20px rgba(0, 0, 0, 0.05);
   }
   .toolbar-left, .toolbar-right {
     display: flex;
@@ -401,11 +406,23 @@
     font-weight: 700;
     color: var(--accent);
     padding: 20px 40px;
-    border: 2px solid var(--accent-border);
-    background: var(--accent-dim);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border-radius: var(--radius-xl);
     letter-spacing: -0.02em;
-    box-shadow: 0 0 0 4px var(--accent-dim);
+    box-shadow: var(--glass-shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .answer-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    pointer-events: none;
   }
   .answer-enter {
     animation: answerReveal 300ms var(--easing-spring) forwards;
@@ -432,18 +449,32 @@
     text-transform: uppercase;
     letter-spacing: 0.1em;
     box-shadow: var(--shadow-card);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 6px 16px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    box-shadow: var(--glass-shadow);
   }
   .audio-meta {
     position: fixed; bottom: 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
     padding: 8px 16px;
     border-radius: 9999px;
     font-size: 0.8125rem;
     display: flex;
     align-items: center;
     gap: 6px;
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--glass-shadow);
   }
   .meta-label { color: var(--text-dim); font-weight: 500; }
   .meta-val { color: var(--text-primary); font-weight: 600; }

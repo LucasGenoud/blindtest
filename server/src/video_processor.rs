@@ -1,12 +1,35 @@
 use std::env;
-use std::process::Command;
 use std::fs;
+use tokio::process::Command;
+use tokio::sync::mpsc;
 use s3::bucket::Bucket;
 use s3::creds::Credentials;
 use s3::region::Region;
 use uuid::Uuid;
 use log::{info, error};
 use crate::db::DbPool;
+
+pub struct ProcessingJob {
+    pub db: actix_web::web::Data<DbPool>,
+    pub audio_id: String,
+    pub video_url: String,
+    pub start_time: i64,
+    pub table: &'static str,
+}
+
+pub type ProcessingQueue = mpsc::UnboundedSender<ProcessingJob>;
+
+/// Spawns a single background worker that processes jobs one at a time.
+/// Returns a sender that can be cloned and shared across request handlers.
+pub fn start_queue_worker() -> ProcessingQueue {
+    let (tx, mut rx) = mpsc::unbounded_channel::<ProcessingJob>();
+    tokio::spawn(async move {
+        while let Some(job) = rx.recv().await {
+            process_and_upload_video(job.db, job.audio_id, job.video_url, job.start_time, job.table).await;
+        }
+    });
+    tx
+}
 
 pub async fn process_and_upload_video(
     db: actix_web::web::Data<DbPool>,
@@ -69,7 +92,8 @@ pub async fn process_and_upload_video(
         .arg("-o")
         .arg(&download_path)
         .arg(&video_url)
-        .status();
+        .status()
+        .await;
 
     let mut path_to_process = download_path.clone();
 
@@ -103,7 +127,8 @@ pub async fn process_and_upload_video(
         .arg("-c:v")
         .arg("copy")
         .arg(&normalized_path)
-        .status();
+        .status()
+        .await;
 
     if let Ok(status) = norm_status {
         if status.success() && fs::metadata(&normalized_path).is_ok() {

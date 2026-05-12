@@ -2,6 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use crate::db::DbPool;
 use crate::middleware::{AuthState, extract_claims, unauthorized, forbidden};
+use crate::video_processor::{ProcessingJob, ProcessingQueue};
 #[derive(Deserialize)]
 pub struct GetNextAudioQuery {
     pub category: Option<String>,
@@ -217,6 +218,7 @@ pub async fn new_audio(
     body: web::Json<NewAudioBody>,
     db: web::Data<DbPool>,
     auth: web::Data<AuthState>,
+    queue: web::Data<ProcessingQueue>,
 ) -> HttpResponse {
     let claims = match extract_claims(&req, &auth) {
         Some(c) if c.role == "contributor" || c.role == "administrator" => c,
@@ -248,12 +250,12 @@ pub async fn new_audio(
             );
 
             // Correctly clone the Actix web::Data pool instead of the undefined `db_pool`
-            let db_clone = db.clone(); 
-            let id_clone = id.clone();
-            let video_url = body.video_url.clone();
-            let start_time = body.start_time.unwrap_or(0);
-            tokio::spawn(async move {
-                crate::video_processor::process_and_upload_video(db_clone, id_clone, video_url, start_time, "audios").await;
+            let _ = queue.send(ProcessingJob {
+                db: db.clone(),
+                audio_id: id.clone(),
+                video_url: body.video_url.clone(),
+                start_time: body.start_time.unwrap_or(0),
+                table: "audios",
             });
 
             HttpResponse::Ok().json(serde_json::json!({"_id": id}))
@@ -265,8 +267,9 @@ pub async fn new_audio(
 pub async fn suggest_audio(
     req: HttpRequest,
     body: web::Json<NewAudioBody>,
-    db: web::Data<DbPool>, // This is the original 'db'
+    db: web::Data<DbPool>,
     auth: web::Data<AuthState>,
+    queue: web::Data<ProcessingQueue>,
 ) -> HttpResponse {
     let claims = match extract_claims(&req, &auth) {
         Some(c) => c,
@@ -290,14 +293,12 @@ pub async fn suggest_audio(
 
     match result {
         Ok(_) => {
-            // Now 'db.clone()' refers back to the 'web::Data' in the function arguments
-            let db_clone = db.clone(); 
-            let id_clone = id.clone();
-            let video_url = body.video_url.clone();
-            let start_time = body.start_time.unwrap_or(0);
-            
-            tokio::spawn(async move {
-                crate::video_processor::process_and_upload_video(db_clone, id_clone, video_url, start_time, "suggestions").await;
+            let _ = queue.send(ProcessingJob {
+                db: db.clone(),
+                audio_id: id.clone(),
+                video_url: body.video_url.clone(),
+                start_time: body.start_time.unwrap_or(0),
+                table: "suggestions",
             });
             HttpResponse::Ok().json(serde_json::json!({"_id": id}))
         }
@@ -367,6 +368,7 @@ pub async fn update_audio(
     body: web::Json<UpdateAudioBody>,
     db: web::Data<DbPool>,
     auth: web::Data<AuthState>,
+    queue: web::Data<ProcessingQueue>,
 ) -> HttpResponse {
     let claims = match extract_claims(&req, &auth) {
         Some(c) if c.role == "contributor" || c.role == "administrator" => c,
@@ -418,12 +420,12 @@ pub async fn update_audio(
     }
 
     if needs_reprocess {
-        let db_clone = db.clone();
-        let id_clone = body.id.clone();
-        let video_url = new_url.to_string();
-        let start_time = new_start_time;
-        tokio::spawn(async move {
-            crate::video_processor::process_and_upload_video(db_clone, id_clone, video_url, start_time, "audios").await;
+        let _ = queue.send(ProcessingJob {
+            db: db.clone(),
+            audio_id: body.id.clone(),
+            video_url: new_url.to_string(),
+            start_time: new_start_time,
+            table: "audios",
         });
     }
 

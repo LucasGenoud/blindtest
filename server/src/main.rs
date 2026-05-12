@@ -17,6 +17,9 @@ async fn main() -> std::io::Result<()> {
     let db_pool = db::init_db().expect("Failed to initialize database");
     log::info!("Database initialized.");
 
+    let processing_queue = video_processor::start_queue_worker();
+    log::info!("Processing queue worker started.");
+
     let auth_state = middleware::AuthState::new();
     let broadcaster = ws::WsBroadcaster::new();
 
@@ -43,6 +46,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(db_pool.clone()))
             .app_data(web::Data::new(auth_state.clone()))
             .app_data(web::Data::new(broadcaster.clone()))
+            .app_data(web::Data::new(processing_queue.clone()))
             // Auth
             .route("/signin", web::post().to(routes::auth::signin))
             .route("/signup", web::post().to(routes::auth::signup))

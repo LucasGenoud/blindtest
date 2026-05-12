@@ -30,6 +30,14 @@
   --shadow-elevated: 0 20px 40px -10px rgba(0,0,0,0.12), 0 8px 16px -4px rgba(0,0,0,0.08);
   --easing-primary: cubic-bezier(0.4, 0, 0.2, 1);
   --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.45);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  --glass-blur: 12px;
+  --glass-gradient:
+    radial-gradient(ellipse 70% 50% at 5% 10%, rgba(94, 92, 230, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 95% 90%, rgba(94, 92, 230, 0.08) 0%, transparent 60%);
 }
 
 /* ─── Dark theme ─── */
@@ -53,6 +61,13 @@
   --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 4px 10px -3px rgba(0, 0, 0, 0.3);
   --shadow-elevated: 0 20px 40px -10px rgba(0,0,0,0.5), 0 8px 16px -4px rgba(0,0,0,0.4);
+  /* Glassmorphism */
+  --glass-bg: rgba(26, 26, 36, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+  --glass-gradient:
+    radial-gradient(ellipse 70% 50% at 5% 10%, rgba(123, 121, 247, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 95% 90%, rgba(123, 121, 247, 0.09) 0%, transparent 60%);
 }
 
 @theme inline {
@@ -94,6 +109,8 @@
   body {
     @apply h-full w-full overflow-hidden bg-bg font-sans text-sm text-text-primary antialiased transition-[background,color] duration-200;
     -moz-osx-font-smoothing: grayscale;
+    background-image: var(--glass-gradient);
+    background-attachment: fixed;
   }
 
   #app {
@@ -329,12 +346,59 @@
 
   .popup-overlay {
     @apply fixed inset-0 z-[100] flex items-center justify-center;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(8px);
   }
 
   .popup-box {
-    @apply max-h-[90vh] w-[420px] overflow-auto rounded-xl border border-border bg-surface shadow-panel;
+    @apply max-h-[90vh] w-[420px] overflow-auto rounded-xl;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    position: relative;
+  }
+
+  .popup-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: var(--glass-shadow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .glass-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 1px; height: 100%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent, rgba(255, 255, 255, 0.3));
+    pointer-events: none;
+    z-index: 1;
   }
 
   .empty-state,
