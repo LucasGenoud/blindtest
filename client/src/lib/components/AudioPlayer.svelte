@@ -162,6 +162,8 @@
     if ($showAnswer && videoId && !currentAnswer) fetchAnswer(videoId);
   });
 
+  // Loads the clip when the round changes. Keep this effect's dependencies to
+  // videoId and player only.
   $effect(() => {
     if (videoId && player) loadVideo();
   });
@@ -169,7 +171,11 @@
   function loadVideo() {
     player.src = `${getApi()}/media/${videoId}`;
     player.load();
-    player.volume = $volume / 100;
+    // Do not read $volume here. This runs inside the effect below, and Svelte
+    // tracks reads made by anything an effect calls, so touching the volume store
+    // would make it a dependency: changing the volume would reload the clip and
+    // restart the countdown. The element keeps its volume across a src change,
+    // and the dedicated effect below owns it.
 
     player.oncanplay = () => {
       videoBuffering = false;
