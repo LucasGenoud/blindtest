@@ -296,7 +296,7 @@
         <span class="round-category">{currentCategory.label}</span>
       {/if}
     </div>
-    <button class="btn-ghost sm" onclick={stopBlindtest}>Exit</button>
+    <button class="btn-secondary sm" onclick={stopBlindtest}>Exit</button>
   </div>
 
   <div class="progress-bar">
@@ -361,7 +361,7 @@
       {#if $currentAudioNumber < totalAudios}
         <button class="btn-secondary" onclick={skipAudio}>Skip clip</button>
       {/if}
-      <button class="btn-ghost" onclick={openYoutube}>
+      <button class="btn-secondary" onclick={openYoutube}>
         <ExternalLink size={16} stroke-width={2} /> Open source
       </button>
     </div>

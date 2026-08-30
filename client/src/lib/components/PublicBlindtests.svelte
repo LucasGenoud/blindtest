@@ -49,7 +49,7 @@
           </div>
           <span class="item-user">{bt.username || 'Unknown'}</span>
           <div class="item-actions">
-            <button class="btn-ghost sm" onclick={() => play(bt)}>Play</button>
+            <button class="btn-secondary sm" onclick={() => play(bt)}>Play</button>
             <button class="btn-ghost sm" onclick={() => play(bt, true)}>Shuffle</button>
           </div>
         </div>

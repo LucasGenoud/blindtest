@@ -101,13 +101,14 @@
     text-transform: uppercase;
     background: transparent;
     border-bottom: 2px solid var(--divider);
+    color: var(--text-primary);
   }
 
   td {
     padding: 8px;
     border-bottom: 1px solid var(--divider);
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
   }
 
   td.mono {

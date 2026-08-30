@@ -208,7 +208,7 @@
     flex-shrink: 0;
   }
   .pool-name {
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-size: 13px;
   }
   /* Category reads as a word, not a colour swatch. */
@@ -232,7 +232,7 @@
     flex-shrink: 0;
   }
   .item-name {
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-size: 13px;
     flex: 1;
     font-weight: 500;

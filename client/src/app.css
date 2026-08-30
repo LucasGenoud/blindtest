@@ -248,11 +248,16 @@
     background: transparent;
     color: var(--accent-ink);
     border: 1px solid transparent;
+    /* No box, so the label needs its own affordance: a rule under the text. */
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
   }
 
   .btn-ghost:hover {
     color: var(--accent-ink);
     background: var(--surface-2);
+    text-decoration-thickness: 2px;
   }
 
   .btn-primary.sm,
@@ -264,15 +269,28 @@
   }
 
   .btn-xs {
-    @apply px-2 py-1 text-xs font-semibold;
-    min-height: 24px;
+    @apply inline-flex items-center justify-center gap-1 px-2 py-1 text-sm font-semibold;
+    min-height: 28px;
     border-radius: 0;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--divider);
+    transition: color var(--duration-fast) ease-out,
+                border-color var(--duration-fast) ease-out;
+  }
+
+  .btn-xs:hover {
+    color: var(--accent-ink);
+    border-color: var(--accent-ink);
   }
 
   /* Icon-only. Allowed for play/pause, mute and close; everything else carries
      a word. Square like everything else. */
+  /* Carries no border (12.9), so it needs the raised fill to be visible at all
+     against the ground. */
   .btn-circle {
-    @apply inline-flex h-9 w-9 items-center justify-center bg-surface p-0 text-text-primary;
+    @apply inline-flex h-9 w-9 items-center justify-center p-0 text-text-primary;
+    background: var(--surface-2);
     border: 0;
     border-radius: 0;
     transition: background-color var(--duration-fast) ease-out,
@@ -312,7 +330,8 @@
   }
 
   .toggle {
-    @apply inline-flex select-none items-center gap-2 bg-surface px-3 py-2 text-sm font-semibold text-text-secondary;
+    @apply inline-flex select-none items-center gap-2 px-3 py-2 text-sm font-semibold text-text-primary;
+    background: var(--surface-2);
     border: 0;
     border-radius: 0;
     min-height: 36px;

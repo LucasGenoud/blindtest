@@ -506,7 +506,7 @@ Error <strong class="tabular">{counts.error}</strong>
     padding: 5px 12px;
     border-radius: 0;
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     background: transparent;
     border: 0;
     border-bottom: 2px solid transparent;
@@ -634,7 +634,7 @@ Error <strong class="tabular">{counts.error}</strong>
     border-radius: 0;
     border: 0;
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     font-size: 13px;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
@@ -690,7 +690,7 @@ Error <strong class="tabular">{counts.error}</strong>
     padding: 8px;
     border-bottom: 1px solid var(--divider);
     font-size: 13px;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     white-space: nowrap;
   }
   td.mono {
@@ -764,24 +764,32 @@ Error <strong class="tabular">{counts.error}</strong>
     gap: 8px;
     align-items: center;
   }
+  /* These are controls, not labels: they carry a border so they read as
+     clickable against a dense row of text. */
   .btn-xs {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 4px;
     padding: 4px 8px;
+    min-height: 28px;
     border-radius: 0;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.04em;
     cursor: pointer;
-    border: 0;
+    border: 1px solid var(--divider);
     background: transparent;
-    color: var(--accent-ink);
-    transition: color var(--duration-fast) ease-out;
+    color: var(--text-primary);
+    transition: color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
     text-decoration: none;
   }
-  .btn-xs:hover { color: var(--accent); text-decoration: none; }
+  .btn-xs:hover {
+    color: var(--accent-ink);
+    border-color: var(--accent-ink);
+    text-decoration: none;
+  }
   .btn-del { color: var(--signal-wrong); }
+  .btn-del:hover { border-color: var(--signal-wrong); color: var(--signal-wrong); }
 
   /* ── Overlay & Popups ── */
   .overlay {
