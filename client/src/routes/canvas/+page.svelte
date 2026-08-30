@@ -5,16 +5,20 @@
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
   import { colors, debounce } from '$lib/misc.js';
+  import {
+    ZOOM_FACTOR,
+    centerOn, fit, pixelAt, worldToViewport, zoomAtPoint,
+  } from '$lib/canvas/canvasView.js';
+  import { writeAll, writePixel } from '$lib/canvas/pixelBuffer.js';
+  import PalettePicker from '$lib/components/canvas/PalettePicker.svelte';
+  import CanvasHud from '$lib/components/canvas/CanvasHud.svelte';
   import { playSelect, playPaint } from '$lib/sound.js';
-  import { Plus, Minus, Home, Grid3X3, Paintbrush } from 'lucide-svelte';
+  import { Paintbrush } from 'lucide-svelte';
 
   let paintConfirm = $state(null);
   let paintConfirmTimer;
 
   const SIZE = 1000;
-  const MIN_ZOOM = 0.5;
-  const MAX_ZOOM = 40;
-  const ZOOM_FACTOR = 1.15;
 
   let canvasEl = $state(null);
   let viewportEl = $state(null);
@@ -27,9 +31,11 @@
   let pixelData = $state([]); // flat hex array
 
   // --- Transform state (world coordinates) ---
-  let zoom = $state(1);
-  let panX = $state(0);
-  let panY = $state(0);
+  // One object so the pure helpers in canvasView.js can take and return it whole.
+  let view = $state({ zoom: 1, panX: 0, panY: 0 });
+  const zoom = $derived(view.zoom);
+  const panX = $derived(view.panX);
+  const panY = $derived(view.panY);
 
   // --- Interaction state ---
   let dragging = $state(false);
@@ -70,12 +76,7 @@
 
   function centerCanvas() {
     if (!viewportEl) return;
-    const vw = viewportEl.clientWidth;
-    const vh = viewportEl.clientHeight;
-    const fitZoom = Math.min(vw / SIZE, vh / SIZE) * 0.85;
-    zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, fitZoom));
-    panX = (vw - SIZE * zoom) / 2;
-    panY = (vh - SIZE * zoom) / 2;
+    view = fit(viewportEl.clientWidth, viewportEl.clientHeight, SIZE);
   }
 
   function onWsMessage(e) {
@@ -97,69 +98,28 @@
   }
 
   function drawCanvas() {
-    for (let i = 0; i < pixelData.length; i++) {
-      const hex = pixelData[i] || 'ffffff';
-      const x = i % SIZE;
-      const y = Math.floor(i / SIZE);
-      setPixelColor(x, y, hex);
-    }
+    writeAll(imageData, SIZE, pixelData);
     ctx.putImageData(imageData, 0, 0);
   }
 
   function setPixelColor(x, y, hex) {
-    const idx = (y * SIZE + x) * 4;
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    imageData.data[idx] = r;
-    imageData.data[idx + 1] = g;
-    imageData.data[idx + 2] = b;
-    imageData.data[idx + 3] = 255;
+    writePixel(imageData, SIZE, x, y, hex);
   }
 
-  // --- Coordinate conversions ---
-  function screenToWorld(sx, sy) {
-    const rect = viewportEl.getBoundingClientRect();
-    const rx = sx - rect.left;
-    const ry = sy - rect.top;
-    return {
-      x: (rx - panX) / zoom,
-      y: (ry - panY) / zoom,
-    };
-  }
-
-  function worldToViewport(wx, wy) {
-    return {
-      x: wx * zoom + panX,
-      y: wy * zoom + panY,
-    };
-  }
+  // --- Coordinate conversions (the maths lives in canvasView.js) ---
+  const viewportRect = () => viewportEl.getBoundingClientRect();
 
   function getCanvasPixel(e) {
-    const { x, y } = screenToWorld(e.clientX, e.clientY);
-    return { x: Math.floor(x), y: Math.floor(y) };
+    return pixelAt(view, viewportRect(), e.clientX, e.clientY);
   }
 
-  function zoomAtPoint(screenX, screenY, newZoom) {
-    const rect = viewportEl.getBoundingClientRect();
-    const mx = screenX - rect.left;
-    const my = screenY - rect.top;
-
-    const wx = (mx - panX) / zoom;
-    const wy = (my - panY) / zoom;
-
-    const clampedZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
-
-    panX = mx - wx * clampedZoom;
-    panY = my - wy * clampedZoom;
-    zoom = clampedZoom;
+  function zoomAt(screenX, screenY, nextZoom) {
+    view = zoomAtPoint(view, viewportRect(), screenX, screenY, nextZoom);
   }
 
   function centerOnPixel(pixel) {
     if (!viewportEl || !pixel) return;
-    const rect = viewportEl.getBoundingClientRect();
-    panX = rect.width / 2 - (pixel.x + 0.5) * zoom;
-    panY = rect.height / 2 - (pixel.y + 0.5) * zoom;
+    view = centerOn(view, viewportRect(), pixel);
   }
 
   // --- Event handlers ---
@@ -167,7 +127,7 @@
     e.preventDefault();
     const direction = e.deltaY > 0 ? -1 : 1;
     const factor = direction > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
-    zoomAtPoint(e.clientX, e.clientY, zoom * factor);
+    zoomAt(e.clientX, e.clientY, zoom * factor);
   }
 
   function handleMouseDown(e) {
@@ -201,8 +161,7 @@
       const dx = e.clientX - dragStartScreen.x;
       const dy = e.clientY - dragStartScreen.y;
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) didDrag = true;
-      panX = dragStartPan.x + dx;
-      panY = dragStartPan.y + dy;
+      view = { ...view, panX: dragStartPan.x + dx, panY: dragStartPan.y + dy };
     }
 
     sendPosition(hoverPixel);
@@ -274,16 +233,19 @@
       const dx = e.touches[0].clientX - dragStartScreen.x;
       const dy = e.touches[0].clientY - dragStartScreen.y;
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) didDrag = true;
-      panX = dragStartPan.x + dx;
-      panY = dragStartPan.y + dy;
+      view = { ...view, panX: dragStartPan.x + dx, panY: dragStartPan.y + dy };
     } else if (e.touches.length === 2) {
       e.preventDefault();
       const dist = getTouchDist(e.touches);
       const center = getTouchCenter(e.touches);
       const scaleFactor = dist / lastTouchDist;
-      zoomAtPoint(center.x, center.y, zoom * scaleFactor);
-      panX += center.x - lastTouchCenter.x;
-      panY += center.y - lastTouchCenter.y;
+      zoomAt(center.x, center.y, zoom * scaleFactor);
+      // Two-finger drag: follow the midpoint as well as the pinch.
+      view = {
+        ...view,
+        panX: view.panX + (center.x - lastTouchCenter.x),
+        panY: view.panY + (center.y - lastTouchCenter.y),
+      };
       lastTouchDist = dist;
       lastTouchCenter = center;
     }
@@ -361,7 +323,7 @@
     if (clientX === undefined || clientY === undefined) {
       if (viewportEl) {
         const rect = viewportEl.getBoundingClientRect();
-        const pos = worldToViewport(pixel.x + 0.5, pixel.y + 0.5);
+        const pos = worldToViewport(view, pixel.x + 0.5, pixel.y + 0.5);
         pixelInfoPos = { x: rect.left + pos.x, y: rect.top + pos.y };
       }
     } else {
@@ -374,14 +336,14 @@
   // --- Zoom control helpers ---
   function zoomIn() {
     if (!viewportEl) return;
-    const rect = viewportEl.getBoundingClientRect();
-    zoomAtPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, zoom * ZOOM_FACTOR);
+    const r = viewportRect();
+    zoomAt(r.left + r.width / 2, r.top + r.height / 2, zoom * ZOOM_FACTOR);
   }
 
   function zoomOut() {
     if (!viewportEl) return;
-    const rect = viewportEl.getBoundingClientRect();
-    zoomAtPoint(rect.left + rect.width / 2, rect.top + rect.height / 2, zoom / ZOOM_FACTOR);
+    const r = viewportRect();
+    zoomAt(r.left + r.width / 2, r.top + r.height / 2, zoom / ZOOM_FACTOR);
   }
 
   let gridVisible = $derived(showGrid && zoom >= 8);
@@ -394,21 +356,7 @@
 <div class="canvas-page"
   oncontextmenu={(e) => e.preventDefault()}
 >
-  <!-- Color Palette -->
-  <div class="palette">
-    <span class="palette-label">Palette</span>
-    <div class="palette-colors">
-      {#each colors as c (c.index)}
-        <div class="color-swatch" class:selected={selectedColor.index === c.index}
-          style="background:#{c.hex}" onclick={() => selectedColor = c}
-          title={c.name}></div>
-      {/each}
-    </div>
-    <div class="palette-info">
-      <div class="selected-color-preview" style="background:#{selectedColor.hex}"></div>
-      <span class="selected-color-name">{selectedColor.name}</span>
-    </div>
-  </div>
+  <PalettePicker bind:selected={selectedColor} />
 
   <!-- Canvas viewport -->
   <div class="canvas-viewport"
@@ -450,7 +398,7 @@
 
     <!-- Hover highlight -->
     {#if hoverPixel && zoom >= 3}
-      {@const pos = worldToViewport(hoverPixel.x, hoverPixel.y)}
+      {@const pos = worldToViewport(view, hoverPixel.x, hoverPixel.y)}
       <div class="hover-highlight" style="
         left: {pos.x}px;
         top: {pos.y}px;
@@ -461,7 +409,7 @@
 
     <!-- Selected pixel highlight -->
     {#if selectedPixel && zoom >= 2}
-      {@const pos = worldToViewport(selectedPixel.x, selectedPixel.y)}
+      {@const pos = worldToViewport(view, selectedPixel.x, selectedPixel.y)}
       <div class="selected-highlight" style="
         left: {pos.x}px;
         top: {pos.y}px;
@@ -477,7 +425,7 @@
 
     <!-- Paint confirmation burst -->
     {#if paintConfirm && zoom >= 3}
-      {@const pPos = worldToViewport(paintConfirm.x + 0.5, paintConfirm.y + 0.5)}
+      {@const pPos = worldToViewport(view, paintConfirm.x + 0.5, paintConfirm.y + 0.5)}
       <div class="paint-confirm" style="left:{pPos.x}px;top:{pPos.y}px;transform:translate(-50%,-50%)" out:fade={{ duration: 500 }}>
         <Paintbrush size={16} stroke-width={1.8} />
       </div>
@@ -486,7 +434,7 @@
     <!-- Other users cursors -->
     {#each Object.values(otherUsers) as u (u.wsId)}
       {#if !$user || u.username !== $user.name}
-        {@const pos = worldToViewport(u.x + 0.5, u.y + 0.5)}
+        {@const pos = worldToViewport(view, u.x + 0.5, u.y + 0.5)}
         <div class="user-cursor" style="left:{pos.x}px;top:{pos.y}px">
           <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
             <path d="M1 1L1 12L4.5 8.5L8 14L10 13L6.5 7L11 7L1 1Z" fill="var(--accent)" stroke="var(--bg)" stroke-width="1"/>
@@ -499,7 +447,7 @@
     <!-- Local user cursor (shown at selected pixel or hover) -->
     {#if selectedPixel || hoverPixel}
       {@const cursorPixel = selectedPixel ?? hoverPixel}
-      {@const pos = worldToViewport(cursorPixel.x + 0.5, cursorPixel.y + 0.5)}
+      {@const pos = worldToViewport(view, cursorPixel.x + 0.5, cursorPixel.y + 0.5)}
       <div class="user-cursor local-cursor" style="left:{pos.x}px;top:{pos.y}px">
         <svg width="12" height="16" viewBox="0 0 12 16" fill="none">
           <path d="M1 1L1 12L4.5 8.5L8 14L10 13L6.5 7L11 7L1 1Z" fill="var(--blue)" stroke="var(--bg)" stroke-width="1"/>
@@ -509,31 +457,15 @@
     {/if}
   </div>
 
-  <!-- HUD: Zoom controls -->
-  <div class="hud-controls">
-    <button class="hud-btn" onclick={zoomOut} title="Zoom out (-)"><Minus size={14} stroke-width={1.8} /></button>
-    <span class="hud-zoom">{Math.round(zoom * 100)}%</span>
-    <button class="hud-btn" onclick={zoomIn} title="Zoom in (+)"><Plus size={14} stroke-width={1.8} /></button>
-    <div class="hud-divider"></div>
-    <button class="hud-btn" onclick={centerCanvas} title="Reset view (R)"><Home size={14} stroke-width={1.8} /></button>
-    <button class="hud-btn" class:active={showGrid} onclick={() => showGrid = !showGrid} title="Toggle grid">
-      <Grid3X3 size={14} stroke-width={1.8} />
-    </button>
-    <div class="hud-divider"></div>
-    <span class="hud-hint">Click to select · Arrows to move · Space to paint</span>
-  </div>
-
-  <!-- HUD: Coordinates -->
-  {#if selectedPixel || hoverPixel}
-    {@const displayPixel = selectedPixel ?? hoverPixel}
-    <div class="hud-coords">
-      <span class="coord">X: {displayPixel.x}</span>
-      <span class="coord">Y: {displayPixel.y}</span>
-      {#if selectedPixel}
-        <span class="coord coord-hint">· SPACE to paint</span>
-      {/if}
-    </div>
-  {/if}
+  <CanvasHud
+    {zoom}
+    bind:showGrid
+    pixel={selectedPixel ?? hoverPixel}
+    pixelIsSelected={!!selectedPixel}
+    onzoomin={zoomIn}
+    onzoomout={zoomOut}
+    onreset={centerCanvas}
+  />
 
   <!-- Pixel info tooltip -->
   {#if pixelInfo && pixelInfo.username}
@@ -554,63 +486,16 @@
     background: var(--bg);
   }
 
-  .palette {
-    display: flex; align-items: center; gap: 12px;
-    padding: 8px 16px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    z-index: 10;
-  }
-  .palette-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    flex-shrink: 0;
-  }
-  .palette-colors {
-    display: flex; flex-wrap: wrap; gap: 3px;
-    flex: 1;
-  }
-  .color-swatch {
-    width: 22px; height: 22px; border-radius: 0;
-    cursor: pointer; border: 2px solid transparent;
-    transition: color var(--duration-fast) ease-out, background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
-    flex-shrink: 0;
-  }
-  .color-swatch:hover { transform: scale(1.18); z-index: 2; }
-  .color-swatch.selected {
-    border-color: var(--text-primary);
-  }
-  .palette-info {
-    display: flex; align-items: center; gap: 8px;
-    padding-left: 12px;
-    border-left: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .selected-color-preview {
-    width: 28px; height: 28px;
-    border-radius: 0;
-    border: 1px solid var(--border-2);
-  }
-  .selected-color-name {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    min-width: 80px;
-  }
-
   .canvas-viewport {
     flex: 1; overflow: hidden; position: relative;
     background:
       radial-gradient(circle at 50% 50%, rgba(30, 30, 40, 1) 0%, rgba(10, 10, 11, 1) 100%);
   }
+
   .canvas-viewport.hide-cursor {
     cursor: none;
   }
+
   canvas {
     position: absolute;
     top: 0; left: 0;
@@ -638,6 +523,7 @@
     outline: 2px solid #fff;
     outline-offset: 1px;
   }
+
   .selected-crosshair {
     position: absolute;
     width: 4px;
@@ -645,9 +531,13 @@
     border-color: #fff;
     border-style: solid;
   }
+
   .selected-crosshair.tl { top: -3px; left: -3px; border-width: 2px 0 0 2px; }
+
   .selected-crosshair.tr { top: -3px; right: -3px; border-width: 2px 2px 0 0; }
+
   .selected-crosshair.bl { bottom: -3px; left: -3px; border-width: 0 0 2px 2px; }
+
   .selected-crosshair.br { bottom: -3px; right: -3px; border-width: 0 2px 2px 0; }
 
   .paint-confirm {
@@ -665,13 +555,16 @@
     transform: translate(-1px, -1px);
     transition: left 0.1s linear, top 0.1s linear;
   }
+
   .local-cursor {
     z-index: 6;
     transition: none; /* Local cursor should feel instant */
   }
+
   .local-cursor .cursor-name {
     color: var(--blue);
   }
+
   .cursor-name {
     font-family: var(--mono);
     font-size: 11px;
@@ -685,84 +578,6 @@
     opacity: 0.9;
   }
 
-  .hud-controls {
-    position: absolute;
-    bottom: 16px; left: 50%;
-    transform: translateX(-50%);
-    display: flex; align-items: center; gap: 4px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 0;
-    padding: 4px 6px;
-    z-index: 20;
-  }
-  .hud-btn {
-    width: 30px; height: 30px;
-    border-radius: 0;
-    border: none;
-    background: transparent;
-    color: var(--text-primary);
-    font-family: var(--mono);
-    font-size: 15px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: color var(--duration-fast) ease-out, background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
-    padding: 0;
-  }
-  .hud-btn:hover {
-    background: var(--surface-2);
-  }
-  .hud-btn.hud-btn-text {
-    width: auto;
-    font-size: 11px;
-    padding: 0 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-  }
-  .hud-btn.hud-btn-text.active {
-    color: var(--accent-ink);
-    background: var(--surface-2);
-  }
-  .hud-zoom {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-secondary);
-    min-width: 48px;
-    text-align: center;
-    user-select: none;
-  }
-  .hud-hint {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.04em;
-    white-space: nowrap;
-    padding: 0 4px;
-    user-select: none;
-  }
-  .hud-divider {
-    width: 1px; height: 18px;
-    background: var(--border);
-    margin: 0 4px;
-  }
-
-  .hud-coords {
-    position: absolute;
-    bottom: 16px; right: 16px;
-    display: flex; gap: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 0;
-    padding: 5px 10px;
-    z-index: 20;
-  }
-  .coord {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text-secondary);
-    letter-spacing: 0.05em;
-  }
   .coord-hint {
     color: var(--accent-ink);
     opacity: 0.8;
@@ -777,12 +592,14 @@
     pointer-events: none;
     display: flex; flex-direction: column; gap: 2px;
   }
+
   .tooltip-user {
     font-family: var(--mono);
     font-size: 11px;
     color: var(--text-primary);
     font-weight: 500;
   }
+
   .tooltip-date {
     font-family: var(--mono);
     font-size: 11px;
