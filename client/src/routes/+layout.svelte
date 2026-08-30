@@ -5,11 +5,10 @@
   import { websocket } from '$lib/stores/websocketStore.js';
   import { theme } from '$lib/stores/themeStore.js';
   import { connectWebSocket } from '$lib/websocket.js';
-  import { getApi } from '$lib/api.js';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
 
-  let { children } = $props();
+  let { children, data } = $props();
 
   let prevPath = $state('');
   let entering = $state(false);
@@ -36,22 +35,22 @@
     }
   });
 
+  // Set user from load() data and connect WebSocket
+  $effect(() => {
+    if (data.user) {
+      $user = data.user;
+    } else if (data.invalidToken) {
+      // The load already dropped it from storage; keep the store in step.
+      $token = '';
+      $user = null;
+    }
+  });
+
   onMount(async () => {
-    // Auto-login if token exists
-    if ($token) {
+    if ($token && data.user) {
       try {
-        const res = await fetch(`${getApi()}/getuser`, {
-          headers: { Authorization: $token },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          $user = data;
-          const ws = await connectWebSocket($token);
-          $websocket = ws;
-        } else {
-          $token = '';
-          $user = null;
-        }
+        const ws = await connectWebSocket($token);
+        $websocket = ws;
       } catch {
         // silent fail
       }

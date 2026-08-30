@@ -3,13 +3,11 @@
   import { fade } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
   import { token, userPermission } from '$lib/stores/userStore.js';
-  import { goto } from '$app/navigation';
   import { Trash2 } from 'lucide-svelte';
 
   let users = $state([]);
 
   onMount(async () => {
-    if ($userPermission < 3) { goto('/'); return; }
     const res = await fetch(`${getApi()}/getusers`, { headers: { Authorization: $token } });
     if (res.ok) users = await res.json();
   });

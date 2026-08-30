@@ -44,3 +44,6 @@ env/
 
 cookies.txt
 seaweed_data/
+
+# Superpowers tool state (pids, logs)
+.superpowers/

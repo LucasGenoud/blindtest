@@ -1,3 +1,4 @@
+use actix_web::http::header::{HeaderValue, SEC_WEBSOCKET_PROTOCOL};
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_ws::Message;
 use futures_util::StreamExt;
@@ -75,7 +76,17 @@ pub async fn ws_handler(
         }
     };
 
-    let (response, mut session, mut msg_stream) = actix_ws::handle(&req, stream)?;
+    let (mut response, mut session, mut msg_stream) = actix_ws::handle(&req, stream)?;
+
+    // The browser sends the JWT as the requested subprotocol, and RFC 6455 says a
+    // server that does not echo one back has not accepted the handshake — browsers
+    // then close the connection immediately. Without this the socket never opened
+    // at all, so nothing realtime has been reaching clients.
+    if !token.is_empty() {
+        if let Ok(value) = HeaderValue::from_str(token) {
+            response.headers_mut().insert(SEC_WEBSOCKET_PROTOCOL, value);
+        }
+    }
 
     let ws_id = uuid::Uuid::new_v4().to_string();
     let username = claims.name.clone();
