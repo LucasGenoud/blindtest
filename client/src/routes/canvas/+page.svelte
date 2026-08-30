@@ -572,7 +572,7 @@
   }
   .palette-label {
     font-family: var(--mono);
-    font-size: 0.6rem;
+    font-size: 11px;
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -583,16 +583,14 @@
     flex: 1;
   }
   .color-swatch {
-    width: 22px; height: 22px; border-radius: 4px;
+    width: 22px; height: 22px; border-radius: 0;
     cursor: pointer; border: 2px solid transparent;
-    transition: all 0.15s;
+    transition: color var(--duration-fast) ease-out, background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
     flex-shrink: 0;
   }
   .color-swatch:hover { transform: scale(1.18); z-index: 2; }
   .color-swatch.selected {
     border-color: var(--text-primary);
-    box-shadow: 0 0 8px rgba(245, 245, 247, 0.3);
-    transform: scale(1.12);
   }
   .palette-info {
     display: flex; align-items: center; gap: 8px;
@@ -602,12 +600,12 @@
   }
   .selected-color-preview {
     width: 28px; height: 28px;
-    border-radius: 6px;
+    border-radius: 0;
     border: 1px solid var(--border-2);
   }
   .selected-color-name {
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 11px;
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -648,7 +646,6 @@
     z-index: 4;
     outline: 2px solid #fff;
     outline-offset: 1px;
-    box-shadow: 0 0 0 3px rgba(0,0,0,0.5), 0 0 12px rgba(255,255,255,0.2);
   }
   .selected-crosshair {
     position: absolute;
@@ -666,9 +663,8 @@
     position: absolute;
     pointer-events: none;
     z-index: 7;
-    animation: paintConfirm 600ms var(--easing-spring) forwards;
+    animation: paintConfirm 600ms var(--easing-primary) forwards;
     color: var(--accent);
-    filter: drop-shadow(0 0 6px var(--accent-dim));
   }
 
   .user-cursor {
@@ -687,11 +683,11 @@
   }
   .cursor-name {
     font-family: var(--mono);
-    font-size: 0.55rem;
+    font-size: 11px;
     background: var(--surface);
     border: 1px solid var(--border);
     padding: 1px 5px;
-    border-radius: 3px;
+    border-radius: 0;
     color: var(--accent);
     white-space: nowrap;
     margin-top: 2px;
@@ -705,23 +701,21 @@
     display: flex; align-items: center; gap: 4px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 4px 6px;
     z-index: 20;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
   .hud-btn {
     width: 30px; height: 30px;
-    border-radius: 5px;
+    border-radius: 0;
     border: none;
     background: transparent;
     color: var(--text-primary);
     font-family: var(--mono);
-    font-size: 16px;
+    font-size: 15px;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
+    transition: color var(--duration-fast) ease-out, background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
     padding: 0;
   }
   .hud-btn:hover {
@@ -729,7 +723,7 @@
   }
   .hud-btn.hud-btn-text {
     width: auto;
-    font-size: 0.6rem;
+    font-size: 11px;
     padding: 0 8px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -737,11 +731,11 @@
   }
   .hud-btn.hud-btn-text.active {
     color: var(--accent);
-    background: var(--accent-dim);
+    background: var(--surface-2);
   }
   .hud-zoom {
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 11px;
     color: var(--text-secondary);
     min-width: 48px;
     text-align: center;
@@ -749,7 +743,7 @@
   }
   .hud-hint {
     font-family: var(--mono);
-    font-size: 0.55rem;
+    font-size: 11px;
     color: var(--text-dim);
     letter-spacing: 0.04em;
     white-space: nowrap;
@@ -768,15 +762,13 @@
     display: flex; gap: 12px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 0;
     padding: 5px 10px;
     z-index: 20;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
   .coord {
     font-family: var(--mono);
-    font-size: 0.62rem;
+    font-size: 11px;
     color: var(--text-secondary);
     letter-spacing: 0.05em;
   }
@@ -790,20 +782,19 @@
     background: var(--surface);
     border: 1px solid var(--border);
     padding: 6px 12px;
-    border-radius: 6px;
+    border-radius: 0;
     pointer-events: none;
     display: flex; flex-direction: column; gap: 2px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   }
   .tooltip-user {
     font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: 11px;
     color: var(--text-primary);
     font-weight: 500;
   }
   .tooltip-date {
     font-family: var(--mono);
-    font-size: 0.6rem;
+    font-size: 11px;
     color: var(--text-dim);
   }
 </style>

@@ -1,21 +1,17 @@
 <script>
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { volume } from '$lib/stores/gameStore.js';
-  import { theme } from '$lib/stores/themeStore.js';
   import { stringToColor } from '$lib/misc.js';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import LoginPopup from '$lib/components/login/LoginPopup.svelte';
-  import { Music, Volume2, Sun, Moon, BarChart3, Disc3, MessageSquare, Users, LogOut, Palette } from 'lucide-svelte';
+  import { Volume2, LogOut } from 'lucide-svelte';
 
   let showLogin = $state(false);
   let showProfile = $state(false);
 
   function changeVolume(e) {
     $volume = parseInt(e.target.value);
-  }
-
-  function toggleTheme() {
-    $theme = $theme === 'dark' ? 'light' : 'dark';
   }
 
   function logOut() {
@@ -28,55 +24,48 @@
     goto(path);
     showProfile = false;
   }
+
+  const links = $derived([
+    { label: 'Play', path: '/' },
+    { label: 'Canvas', path: '/canvas' },
+    ...($token ? [{ label: 'Blindtests', path: '/custom-blindtests' }] : []),
+  ]);
 </script>
 
-<header class="z-[1000] flex h-14 items-center justify-between border-b px-5">
-  <div class="flex items-center gap-3">
-    <div
-      class="flex cursor-pointer items-center gap-1.5 no-underline"
-      onclick={() => goto('/')}
-      role="button"
-      tabindex="0"
-      onkeydown={(e) => e.key === 'Enter' && goto('/')}
-    >
-      <Music size={18} class="text-accent" stroke-width={1.8} />
-      <span class="text-base font-bold tracking-[-0.02em] text-text-primary">blindtest</span>
-      <span class="rounded-full border px-1.5 py-px text-[0.625rem] font-semibold uppercase tracking-[0.05em] text-accent" style="background: var(--accent-dim); border-color: var(--accent-border);">
-        v2
-      </span>
-    </div>
-
+<!-- One bar: brand flush left, links in text colour, one primary action at the right end. -->
+<header class="z-[1000] flex h-14 shrink-0 items-center justify-between gap-6 bg-bg px-8">
+  <div class="flex items-center gap-6">
     <button
-      class="rounded-full border border-border bg-bg px-3.5 py-[5px] text-[0.8125rem] font-medium text-text-secondary transition-all duration-200 hover:text-accent hover:[background:var(--accent-dim)] hover:[border-color:var(--accent-border)]"
-      onclick={() => goto('/canvas')}
+      class="flex items-baseline gap-2 bg-transparent p-0 text-left"
+      onclick={() => goto('/')}
     >
-      <Palette size={14} class="shrink-0" stroke-width={1.8} /> Canvas
+      <span class="text-lg font-extrabold tracking-[-0.02em] text-text-primary">blindtest</span>
     </button>
+
+    <nav class="hide-mobile flex items-center gap-6">
+      {#each links as link (link.path)}
+        <button
+          class="bg-transparent p-0 text-[14px] font-normal {$page.url.pathname === link.path ? 'text-accent' : 'text-text-primary'} hover:text-accent-ink"
+          onclick={() => goto(link.path)}
+        >
+          {link.label}
+        </button>
+      {/each}
+    </nav>
   </div>
 
-  <div class="flex items-center gap-2.5">
-    <div class="hide-mobile flex items-center gap-1.5 rounded-full border border-border bg-bg px-3 py-[5px]">
-      <Volume2 size={13} class="opacity-60" stroke-width={1.8} />
+  <div class="flex items-center gap-4">
+    <div class="hide-mobile flex items-center gap-2">
+      <Volume2 size={16} class="text-text-secondary" stroke-width={2} />
       <input
         type="range"
         min="0" max="100"
         value={$volume}
         oninput={changeVolume}
+        aria-label="Volume"
         style="width:90px"
       />
     </div>
-
-    <button
-      class="flex h-[34px] w-[34px] items-center justify-center rounded-md border border-border bg-surface-2 p-0 text-base text-text-secondary transition-all duration-200 hover:text-accent hover:[background:var(--accent-dim)] hover:[border-color:var(--accent-border)]"
-      onclick={toggleTheme}
-      title="Toggle theme"
-    >
-      {#if $theme === 'dark'}
-        <Sun size={16} stroke-width={1.8} />
-      {:else}
-        <Moon size={16} stroke-width={1.8} />
-      {/if}
-    </button>
 
     {#if !$token}
       <button class="btn-primary" onclick={() => showLogin = true}>
@@ -84,29 +73,31 @@
       </button>
     {:else if $user}
       <div class="relative">
-        <div
-          class="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-[0.8rem] font-bold text-white transition-[opacity,box-shadow] duration-150 hover:opacity-90 hover:[box-shadow:0_0_0_3px_var(--accent-dim)]"
+        <!-- The avatar is one of the two circular exceptions. -->
+        <button
+          class="flex h-9 w-9 items-center justify-center rounded-full p-0 text-sm font-extrabold text-bg"
           style="background:{stringToColor($user.name)}"
           onclick={() => showProfile = !showProfile}
+          aria-label="Account menu"
         >
           {$user.name?.substring(0,1).toUpperCase()}
-        </div>
+        </button>
 
         {#if showProfile}
-          <div class="profile-dropdown absolute right-0 top-[calc(100%+10px)] z-[1001] flex min-w-[210px] flex-col gap-0.5 rounded-lg border p-2">
-            <div class="px-3 py-2 pb-1 text-sm font-semibold text-text-primary">{$user.name}</div>
-            <div class="my-1 h-px bg-border"></div>
-            <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/statistics')}><BarChart3 size={15} class="inline-block mr-2" stroke-width={1.8} /> Statistics</button>
+          <div class="profile-dropdown absolute right-0 top-[calc(100%+8px)] z-[1001] flex min-w-[200px] flex-col">
+            <div class="px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary">{$user.name}</div>
+            <button class="menu-item" onclick={() => nav('/statistics')}>Statistics</button>
             {#if $userPermission >= 2}
-              <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/manage-audios')}><Disc3 size={15} class="inline-block mr-2" stroke-width={1.8} /> Manage audios</button>
-              <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/suggestions')}><MessageSquare size={15} class="inline-block mr-2" stroke-width={1.8} /> Suggestions</button>
+              <button class="menu-item" onclick={() => nav('/manage-audios')}>Manage audios</button>
+              <button class="menu-item" onclick={() => nav('/suggestions')}>Suggestions</button>
             {/if}
-            <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/custom-blindtests')}><Music size={15} class="inline-block mr-2" stroke-width={1.8} /> Create blindtest</button>
+            <button class="menu-item" onclick={() => nav('/custom-blindtests')}>Create blindtest</button>
             {#if $userPermission >= 3}
-              <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-text-secondary transition-[background,color] duration-150 hover:bg-surface-2 hover:text-text-primary" onclick={() => nav('/manage-users')}><Users size={15} class="inline-block mr-2" stroke-width={1.8} /> Manage users</button>
+              <button class="menu-item" onclick={() => nav('/manage-users')}>Manage users</button>
             {/if}
-            <div class="my-1 h-px bg-border"></div>
-            <button class="w-full rounded-md bg-transparent px-3 py-[9px] text-left text-[0.8125rem] font-medium text-red transition-[background,color] duration-150 hover:text-red hover:[background:rgba(220,38,38,0.06)]" onclick={logOut}><LogOut size={15} class="inline-block mr-2" stroke-width={1.8} /> Log out</button>
+            <button class="menu-item menu-item-leave" onclick={logOut}>
+              <LogOut size={16} stroke-width={2} /> Log out
+            </button>
           </div>
         {/if}
       </div>
@@ -120,16 +111,36 @@
 
 <style>
   header {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-bottom-color: var(--glass-border);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 20px rgba(0, 0, 0, 0.06);
+    border-bottom: 2px solid var(--divider);
   }
 
+  /* Menus separate by a lighter surface plus a rule, not by a shadow. */
   .profile-dropdown {
-    background: var(--surface);
-    border-color: var(--border);
-    box-shadow: var(--shadow-lg);
+    background: var(--surface-2);
+    border-top: 2px solid var(--divider);
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 400;
+    text-align: left;
+    transition: color var(--duration-fast) ease-out;
+  }
+
+  .menu-item:hover {
+    color: var(--accent-ink);
+  }
+
+  .menu-item-leave {
+    color: var(--signal-wrong);
+    border-top: 2px solid var(--divider);
+    margin-top: 4px;
   }
 </style>

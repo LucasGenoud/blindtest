@@ -1,73 +1,52 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap');
 @import "tailwindcss";
 
-/* ─── Light theme (default) ─── */
+/* ─────────────────────────────────────────────────────────────────────────────
+   Sodium — the single source of truth for the visual system.
+   See DESIGN_GUIDELINES.md. Change a value here, never at a call site.
+   One ground, and it is dark: there is no light theme and no theme toggle.
+   ───────────────────────────────────────────────────────────────────────────── */
 :root {
-  --bg: #F4F5F7;
-  --surface: #FFFFFF;
-  --surface-2: #F8F8FB;
-  --border: #E4E4E7;
-  --border-2: #D1D1D8;
-  --text-primary: #1A1A24;
-  --text-secondary: #52525B;
-  --text-dim: #71717A;
-  --accent: #5E5CE6;
-  --accent-hover: #4B49B8;
-  --accent-dim: rgba(94, 92, 230, 0.08);
-  --accent-border: rgba(94, 92, 230, 0.25);
-  --green: #16A34A;
-  --red: #DC2626;
-  --blue: #2563EB;
-  --orange: #EA580C;
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -3px rgba(0, 0, 0, 0.05);
-  --mono: 'IBM Plex Mono', monospace;
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --shadow-elevated: 0 20px 40px -10px rgba(0,0,0,0.12), 0 8px 16px -4px rgba(0,0,0,0.08);
-  --easing-primary: cubic-bezier(0.4, 0, 0.2, 1);
-  --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Glassmorphism */
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.45);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  --glass-blur: 12px;
-  --glass-gradient:
-    radial-gradient(ellipse 70% 50% at 5% 10%, rgba(94, 92, 230, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 95% 90%, rgba(94, 92, 230, 0.08) 0%, transparent 60%);
-}
+  --bg: #1C1A17;          /* ground, every screen */
+  --surface: #2A2620;     /* cards, rows, raised panels */
+  --surface-2: #3B362E;   /* hover fill, dialogs, menus */
+  --text-primary: #F5F1E8;
+  --text-secondary: #C4BCAC;
+  --text-dim: #A39C8E;    /* darkest grey allowed on text (4.5:1) */
+  --accent: #FFB020;      /* primary fill, icons, large type */
+  --accent-ink: #FFD27A;  /* hover/pressed, and 13–15px accent text */
+  --accent-hover: var(--accent-ink);
+  --divider: rgba(245, 241, 232, 0.4);
 
-/* ─── Dark theme ─── */
-[data-theme="dark"] {
-  --bg: #0F0F14;
-  --surface: #1A1A24;
-  --surface-2: #23232F;
-  --border: #2E2E3E;
-  --border-2: #3D3D52;
-  --text-primary: #F0F0F5;
-  --text-secondary: #9898AA;
-  --text-dim: #5C5C70;
-  --accent: #7B79F7;
-  --accent-hover: #9796FA;
-  --accent-dim: rgba(123, 121, 247, 0.10);
-  --accent-border: rgba(123, 121, 247, 0.28);
-  --green: #4ADE80;
-  --red: #F87171;
-  --blue: #60A5FA;
-  --orange: #FB923C;
-  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 4px 10px -3px rgba(0, 0, 0, 0.3);
-  --shadow-elevated: 0 20px 40px -10px rgba(0,0,0,0.5), 0 8px 16px -4px rgba(0,0,0,0.4);
-  /* Glassmorphism */
-  --glass-bg: rgba(26, 26, 36, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.07);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
-  --glass-gradient:
-    radial-gradient(ellipse 70% 50% at 5% 10%, rgba(123, 121, 247, 0.14) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 95% 90%, rgba(123, 121, 247, 0.09) 0%, transparent 60%);
+  /* Borders exist on inputs and rules only; both names resolve to the divider so
+     no call site can invent a second border colour. */
+  --border: var(--divider);
+  --border-2: var(--divider);
+
+  /* Two signal colours, and only in results. */
+  --signal-correct: #3FE08A;
+  --signal-wrong: #FFD27A;
+
+  /* Legacy hue names kept so existing call sites keep resolving; the five
+     semantic hues collapse to the two signals above. */
+  --green: var(--signal-correct);
+  --red: var(--signal-wrong);
+  --orange: var(--signal-wrong);
+  --blue: var(--text-secondary);
+
+  --sans: 'Archivo', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: var(--sans); /* no second typeface: tabular Archivo instead */
+
+  /* Zero corner radius. The only round things are the avatar and the
+     countdown ring, both explicitly circular. */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+
+  --easing-primary: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 120ms;   /* hover, focus, fill change */
+  --duration-panel: 200ms;  /* panel, dialog, route change */
+  --duration-reveal: 320ms; /* answer reveal, score tick */
 }
 
 @theme inline {
@@ -83,19 +62,38 @@
   --color-text-dim: var(--text-dim);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
   --color-green: var(--green);
   --color-red: var(--red);
   --color-blue: var(--blue);
   --color-orange: var(--orange);
-  --shadow-card: var(--shadow-card);
-  --shadow-panel: var(--shadow-lg);
-  --shadow-elevated: var(--shadow-elevated);
-  --breakpoint-md: 768px;
+
+  /* Two breakpoints only. */
+  --breakpoint-md: 760px;
   --breakpoint-lg: 1024px;
+
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
-  --radius-xl: var(--radius-xl);
+
+  /* Six sizes, no others. Tailwind's default steps are remapped onto them so a
+     `text-sm` anywhere in the app cannot land off-scale. */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 20px;
+  --text-xl: 20px;
+  --text-2xl: 32px;
+  --text-3xl: 32px;
+  --text-4xl: 64px;
+  --text-5xl: 64px;
+
+  /* Three weights, no others. */
+  --font-weight-normal: 400;
+  --font-weight-medium: 600;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 800;
+  --font-weight-extrabold: 800;
 }
 
 @layer base {
@@ -107,38 +105,51 @@
 
   html,
   body {
-    @apply h-full w-full overflow-hidden bg-bg font-sans text-sm text-text-primary antialiased transition-[background,color] duration-200;
+    @apply h-full w-full overflow-hidden bg-bg font-sans text-base text-text-primary antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-image: var(--glass-gradient);
-    background-attachment: fixed;
+    line-height: 1.55;
   }
 
   #app {
     @apply flex h-full flex-col;
   }
 
+  h1, h2, h3, h4 {
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
   a {
-    color: var(--accent);
-    @apply no-underline transition-opacity duration-200;
+    color: var(--accent-ink);
+    @apply no-underline;
+    transition: color var(--duration-fast) ease-out;
   }
 
   a:hover {
-    @apply opacity-75 underline;
+    color: var(--accent-ink);
+    @apply underline;
   }
 
   button {
-    @apply cursor-pointer rounded-md border-0 px-4 py-2 font-sans text-[13px] font-medium transition-all duration-200 ease-in-out;
+    @apply cursor-pointer border-0 px-4 py-2 font-sans text-sm font-semibold;
+    border-radius: 0;
+    transition: background-color var(--duration-fast) ease-out,
+                color var(--duration-fast) ease-out,
+                border-color var(--duration-fast) ease-out;
   }
 
+  /* One field style. */
   input,
   select {
-    @apply rounded-md border border-border bg-surface px-[13px] py-[9px] text-sm text-text-primary outline-none transition-[border-color,box-shadow] duration-200;
+    @apply border border-border bg-surface px-3 py-2 text-base text-text-primary outline-none;
+    border-radius: 0;
+    min-height: 36px;
+    transition: border-color var(--duration-fast) ease-out;
   }
 
   input:focus,
   select:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-dim);
   }
 
   input::placeholder {
@@ -157,124 +168,160 @@
   *:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: var(--radius-sm);
+    border-radius: 0;
+  }
+
+  /* Numbers that change live must not jitter. */
+  .font-mono,
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
+  /* ─── Buttons: three variants, no fourth ─────────────────────────────────── */
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    @apply inline-flex items-center justify-start gap-2 px-3.5 py-2 text-[14px] font-bold;
+    border-radius: 0;
+    min-height: 36px;
+    transition: background-color var(--duration-fast) ease-out,
+                color var(--duration-fast) ease-out,
+                border-color var(--duration-fast) ease-out;
+  }
+
+  /* One per screen. */
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-md border px-4 py-[7px] text-[0.8125rem] font-medium;
     background: var(--accent);
-    color: #ffffff;
-    border-color: var(--accent);
-    transition: all 0.15s var(--easing-primary);
+    color: var(--bg);
+    border: 1px solid var(--accent);
   }
 
   .btn-primary:hover {
-    background: var(--accent-hover);
-    border-color: var(--accent-hover);
-    filter: brightness(1.05);
+    background: var(--accent-ink);
+    border-color: var(--accent-ink);
   }
 
   .btn-primary:active {
-    transform: scale(0.97);
+    background: var(--accent-ink);
   }
 
   .btn-primary:disabled {
     @apply cursor-not-allowed opacity-40;
   }
 
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--divider);
+  }
+
+  .btn-secondary:hover {
+    color: var(--accent-ink);
+    border-color: var(--accent-ink);
+  }
+
+  .btn-secondary:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+
+  /* Destructive actions are a secondary button with wrong-signal text, and
+     always confirm. `.btn-danger` / `.btn-warning` are the same thing. */
+  .btn-danger,
+  .btn-warning {
+    @apply inline-flex items-center justify-start gap-2 px-3.5 py-2 text-[14px] font-bold;
+    border-radius: 0;
+    min-height: 36px;
+    background: transparent;
+    color: var(--signal-wrong);
+    border: 1px solid var(--divider);
+    transition: border-color var(--duration-fast) ease-out;
+  }
+
+  .btn-danger:hover,
+  .btn-warning:hover {
+    border-color: var(--signal-wrong);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--accent-ink);
+    border: 1px solid transparent;
+  }
+
+  .btn-ghost:hover {
+    color: var(--accent-ink);
+    background: var(--surface-2);
+  }
+
   .btn-primary.sm,
   .btn-secondary.sm,
   .btn-danger.sm,
   .btn-warning.sm {
-    @apply px-3 py-1.5 text-xs;
+    @apply px-3 py-1 text-sm;
+    min-height: 32px;
   }
 
   .btn-xs {
-    @apply px-2.5 py-1 text-[0.6875rem] font-semibold;
+    @apply px-2 py-1 text-xs font-semibold;
+    min-height: 24px;
+    border-radius: 0;
   }
 
-  .btn-danger {
-    @apply inline-flex items-center justify-center rounded-md border px-4 py-[7px] text-[0.8125rem] font-medium;
-    background: transparent;
-    color: var(--red);
-    border-color: rgba(220, 38, 38, 0.35);
-    transition: all 0.15s var(--easing-primary);
-  }
-
-  .btn-danger:hover {
-    background: rgba(220, 38, 38, 0.08);
-    border-color: var(--red);
-    filter: brightness(1.05);
-  }
-
-  .btn-danger:active {
-    transform: scale(0.97);
-  }
-
-  .btn-warning {
-    @apply inline-flex items-center justify-center rounded-md border px-4 py-[7px] text-[0.8125rem] font-medium;
-    background: transparent;
-    color: var(--orange);
-    border-color: rgba(234, 88, 12, 0.35);
-    transition: all 0.15s var(--easing-primary);
-  }
-
-  .btn-warning:hover {
-    background: rgba(234, 88, 12, 0.08);
-    border-color: var(--orange);
-    filter: brightness(1.05);
-  }
-
-  .btn-warning:active {
-    transform: scale(0.97);
-  }
-
+  /* Icon-only. Allowed for play/pause, mute and close; everything else carries
+     a word. Square like everything else. */
   .btn-circle {
-    @apply inline-flex h-[34px] w-[34px] items-center justify-center rounded-md border border-border bg-surface p-0 text-[15px] text-text-primary;
-    transition: all 0.15s var(--easing-primary);
+    @apply inline-flex h-9 w-9 items-center justify-center bg-surface p-0 text-text-primary;
+    border: 0;
+    border-radius: 0;
+    transition: background-color var(--duration-fast) ease-out,
+                color var(--duration-fast) ease-out;
   }
 
   .btn-circle:hover {
-    @apply border-border-2 bg-surface-2;
-    filter: brightness(1.05);
+    background: var(--surface-2);
+    color: var(--accent-ink);
   }
 
-  .btn-circle:active {
-    transform: scale(0.97);
+  .btn-circle:disabled {
+    @apply cursor-not-allowed opacity-40;
   }
 
-  .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-md border border-border bg-surface px-4 py-[7px] text-[0.8125rem] font-medium text-text-primary;
-    transition: all 0.15s var(--easing-primary);
-  }
-
-  .btn-secondary:hover {
-    @apply border-border-2 bg-surface-2;
-    filter: brightness(1.05);
-  }
-
-  .btn-secondary:active {
-    transform: scale(0.97);
-  }
-
+  /* ─── Structure ──────────────────────────────────────────────────────────── */
+  /* A card is for a distinct, clickable object. Rows of like things are a ruled
+     list instead. No border, no shadow. */
   .card {
-    @apply rounded-lg border border-border bg-surface px-7 py-6 shadow-card;
-    transition: transform 0.2s var(--easing-primary), box-shadow 0.2s var(--easing-primary);
+    @apply bg-surface p-3;
+    border-radius: 0;
+    border: 0;
+    transition: background-color var(--duration-fast) ease-out;
   }
 
   .card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    background: var(--surface-2);
+  }
+
+  /* Sections are separated by space and a 2px rule, never by a box. */
+  .section-rule {
+    border-top: 2px solid var(--divider);
   }
 
   .section-label {
-    @apply mb-3.5 font-mono text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-text-secondary;
+    @apply mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary;
   }
 
   .toggle {
-    @apply inline-flex select-none items-center gap-2 rounded-md border border-border bg-surface px-[13px] py-[7px] text-[0.8125rem] font-medium text-text-secondary transition-all duration-200;
+    @apply inline-flex select-none items-center gap-2 bg-surface px-3 py-2 text-sm font-semibold text-text-secondary;
+    border: 0;
+    border-radius: 0;
+    min-height: 36px;
+    transition: background-color var(--duration-fast) ease-out,
+                color var(--duration-fast) ease-out;
+  }
+
+  .toggle:hover {
+    background: var(--surface-2);
   }
 
   .toggle input[type='checkbox'] {
@@ -283,31 +330,35 @@
 
   .toggle.active {
     color: var(--accent);
-    background: var(--accent-dim);
-    border-color: var(--accent-border);
+    background: var(--surface-2);
   }
 
+  /* ─── Feedback ───────────────────────────────────────────────────────────── */
   .progress-bar {
-    @apply relative h-1 w-full overflow-hidden rounded-sm;
-    background: var(--border-2);
+    @apply relative h-0.5 w-full overflow-hidden;
+    background: var(--surface-2);
+    border-radius: 0;
   }
 
   .progress-bar .fill {
-    @apply h-full rounded-sm transition-[width] duration-300;
+    @apply h-full;
     background: var(--accent);
-    position: relative;
+    border-radius: 0;
+    transition: width var(--duration-panel) var(--easing-primary);
   }
 
-  .progress-bar .fill::after {
+  /* Loading is a 2px accent line at the top of the region, not a spinner in the
+     middle of an empty page. */
+  .loading-line {
+    @apply absolute left-0 right-0 top-0 h-0.5 overflow-hidden;
+    background: var(--surface-2);
+  }
+
+  .loading-line::after {
     content: '';
-    position: absolute;
-    right: 0;
-    top: 20%;
-    bottom: 20%;
-    width: 2px;
+    @apply absolute inset-y-0 w-1/3;
     background: var(--accent);
-    border-radius: 999px;
-    box-shadow: 0 0 8px var(--accent), 0 0 16px var(--accent-dim);
+    animation: loadingSlide 1.2s var(--easing-primary) infinite;
   }
 
   .countdown-circle {
@@ -319,12 +370,9 @@
   }
 
   .countdown-circle .value {
-    @apply absolute font-mono text-[96px] font-bold tracking-[-0.04em] text-text-primary;
-  }
-
-  .loading-spin {
-    @apply inline-block;
-    animation: spin 1.5s linear infinite;
+    @apply absolute text-[64px] font-extrabold tracking-[-0.03em] text-text-primary;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
   }
 
   .tooltip-wrapper {
@@ -337,81 +385,41 @@
     bottom: calc(100% + 8px);
     left: 50%;
     transform: translateX(-50%);
-    @apply z-[1000] whitespace-nowrap rounded-sm border border-border bg-surface px-2.5 py-1 text-xs text-text-primary shadow-card;
+    @apply z-[1000] whitespace-nowrap bg-surface-2 px-2 py-1 text-xs text-text-primary;
+    border-radius: 0;
   }
 
   .tooltip-wrapper:hover .tooltip-text {
     display: block;
   }
 
+  /* Dialogs separate by a lighter surface plus a 2px rule — never by a shadow,
+     which does nothing on a dark ground. */
   .popup-overlay {
     @apply fixed inset-0 z-[100] flex items-center justify-center;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(8px);
+    background: rgba(28, 26, 23, 0.8);
   }
 
   .popup-box {
-    @apply max-h-[90vh] w-[420px] overflow-auto rounded-xl;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    @apply max-h-[90vh] w-[420px] max-w-[calc(100vw-32px)] overflow-auto bg-surface-2;
+    border-radius: 0;
+    border-top: 2px solid var(--divider);
     position: relative;
   }
 
-  .popup-box::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-    pointer-events: none;
-    z-index: 1;
-  }
-
-  .glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    box-shadow: var(--glass-shadow);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .glass-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-    pointer-events: none;
-    z-index: 1;
-  }
-
-  .glass-card::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 1px; height: 100%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent, rgba(255, 255, 255, 0.3));
-    pointer-events: none;
-    z-index: 1;
-  }
-
+  /* Same skeleton every time: heading, one line, one action. Flush left. */
   .empty-state,
   .loading-state {
-    @apply py-12 text-center text-sm text-text-dim;
+    @apply py-8 text-left text-sm text-text-secondary;
   }
 
-  .btn-pulse {
-    animation: pulseBtn 2s infinite;
+  .empty-state h2,
+  .loading-state h2 {
+    @apply mb-2 text-lg font-extrabold text-text-primary;
   }
 
   .page-enter {
-    animation: pageEnter 150ms var(--easing-primary) forwards;
+    animation: pageEnter var(--duration-panel) var(--easing-primary) forwards;
   }
 }
 
@@ -421,20 +429,9 @@
   }
 }
 
-@keyframes pulse-anim {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
-}
-
-@keyframes pulseBtn {
-  0%, 100% { box-shadow: 0 0 0 0 var(--accent-border); }
-  50% { box-shadow: 0 0 0 8px transparent; }
+@keyframes loadingSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
 }
 
 @keyframes fadeInOut {
@@ -444,62 +441,61 @@
 }
 
 @keyframes paintConfirm {
-  0% { transform: scale(0.5); opacity: 1; }
-  60% { transform: scale(1.2); opacity: 0.6; }
-  100% { transform: scale(1.5); opacity: 0; }
+  0% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
+/* The reveal is the only moment that gets a movement: a 12px rise with a fade. */
 @keyframes answerReveal {
-  from { opacity: 0; transform: translateY(12px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pageEnter {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 input[type="range"] {
   -webkit-appearance: none;
   width: 100%;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border-2);
+  height: 2px;
+  border-radius: 0;
+  background: var(--surface-2);
   outline: none;
   border: none;
   padding: 0;
+  min-height: 0;
   box-shadow: none;
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 0;
   background: var(--accent);
   cursor: pointer;
-  border: 2px solid var(--surface);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  border: 0;
 }
 
-/* Checkbox toggle */
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-2);
-  border-radius: 3px;
+  background: var(--surface-2);
+  border-radius: 0;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
 }
 
-/* Responsive */
-@media screen and (max-width: 700px) {
+/* Responsive — two breakpoints only. */
+@media screen and (max-width: 760px) {
   .hide-mobile {
     display: none !important;
   }

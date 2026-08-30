@@ -134,7 +134,7 @@
       </div>
     </div>
   {:else}
-    <div class="loading-state">Loading...</div>
+    <div class="loading-region"><div class="loading-line"></div></div>
   {/if}
 </div>
 
@@ -145,13 +145,11 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    box-shadow: var(--shadow-card);
+    padding: 12px 32px;
+    border-bottom: 2px solid var(--divider);
   }
   h2 {
-    font-size: 1rem;
+    font-size: 20px;
     font-weight: 700;
     color: var(--text-primary);
     letter-spacing: -0.02em;
@@ -162,25 +160,26 @@
     align-items: center;
     gap: 12px;
   }
+  /* No pulse loops: it either says saved or it does not. */
   .save-indicator {
-    font-size: 0.75rem;
-    color: var(--green);
-    font-weight: 500;
-    animation: pulse-anim 1.5s ease-in-out infinite;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--signal-correct);
   }
   .editor-split { display: flex; flex: 1; overflow: hidden; }
   .pool, .selected { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .pool { border-right: 1px solid var(--border); }
+  .pool { border-right: 2px solid var(--divider); }
   .panel-header {
     padding: 12px 16px;
     display: flex;
     gap: 8px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface-2);
+    border-bottom: 2px solid var(--divider);
     align-items: center;
   }
   .panel-count {
-    font-size: 0.75rem;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-dim);
   }
@@ -188,14 +187,14 @@
   .pool-item {
     padding: 10px 16px;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 13px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     gap: 10px;
     transition: background 0.15s;
   }
-  .pool-item:hover { background: var(--accent-dim); }
+  .pool-item:hover { background: var(--surface-2); }
   .pool-item:hover .add-icon { opacity: 1; }
   .add-icon {
     margin-left: auto;
@@ -210,17 +209,13 @@
   }
   .pool-name {
     color: var(--text-secondary);
-    font-size: 0.875rem;
+    font-size: 13px;
   }
-  .cat-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    opacity: 0.8;
-  }
+  /* Category reads as a word, not a colour swatch. */
+  .cat-dot { display: none; }
   .selected-item {
     padding: 10px 16px;
-    font-size: 0.875rem;
+    font-size: 13px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -230,7 +225,7 @@
   .selected-item:hover { background: var(--surface-2); }
   .item-num {
     font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: 11px;
     color: var(--text-dim);
     width: 28px;
     text-align: right;
@@ -238,39 +233,33 @@
   }
   .item-name {
     color: var(--text-secondary);
-    font-size: 0.875rem;
+    font-size: 13px;
     flex: 1;
     font-weight: 500;
   }
   .item-cat {
-    font-size: 0.7rem;
+    font-size: 11px;
     color: var(--text-dim);
     font-weight: 500;
   }
   .remove-btn {
     background: transparent;
-    border: 1px solid rgba(220, 38, 38, 0.25);
+    border: 1px solid var(--divider);
     color: var(--red);
     width: 22px;
     height: 22px;
-    border-radius: var(--radius-sm);
-    font-size: 10px;
+    border-radius: 0;
+    font-size: 11px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    transition: all 0.15s;
+    transition: color var(--duration-fast) ease-out, background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
     padding: 0;
   }
   .remove-btn:hover {
-    background: rgba(220, 38, 38, 0.08);
     border-color: var(--red);
   }
-  .loading-state {
-    font-size: 0.875rem;
-    color: var(--text-dim);
-    padding: 48px;
-    text-align: center;
-  }
+  .loading-region { position: relative; height: 2px; }
 </style>

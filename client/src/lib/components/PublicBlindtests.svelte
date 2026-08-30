@@ -3,15 +3,18 @@
   import { goto } from '$app/navigation';
   import { getApi } from '$lib/api.js';
   import { blindtestStatus } from '$lib/stores/gameStore.js';
-  import { Shuffle, Play } from 'lucide-svelte';
 
   let blindtests = $state([]);
+  let loading = $state(true);
 
   onMount(async () => {
     try {
       const res = await fetch(`${getApi()}/getpubliccustomblindtests`);
       if (res.ok) blindtests = await res.json();
-    } catch {}
+    } catch {
+      // The empty state below covers it.
+    }
+    loading = false;
   });
 
   function play(bt, random = false) {
@@ -21,152 +24,120 @@
 </script>
 
 <div class="public-container">
-  {#if blindtests.length > 0}
-    <div class="section-header">
-      <div class="section-title">Public Blindtests</div>
-      <div class="section-count">{blindtests.length} available</div>
+  <div class="section-header">
+    <h2 class="section-title">Public blindtests</h2>
+    <span class="section-count tabular">{blindtests.length}</span>
+  </div>
+
+  {#if loading}
+    <div class="loading-region">
+      <div class="loading-line"></div>
     </div>
-  {/if}
-  <div class="public-list">
-    {#each blindtests as bt (bt._id)}
-      <div class="public-item">
-        <div class="item-header">
-          <div class="item-title">{bt.name}</div>
-          <div class="item-count">{bt.blindtestList.length}</div>
-        </div>
-        <div class="item-footer">
+  {:else if blindtests.length === 0}
+    <div class="empty-state">
+      <h2>No public blindtests yet</h2>
+      <p>Anyone can build one from the clip library and share it here.</p>
+    </div>
+  {:else}
+    <!-- A small set of distinct, clickable objects: cards are right here. -->
+    <div class="public-list">
+      {#each blindtests as bt (bt._id)}
+        <div class="card public-item">
+          <div class="item-header">
+            <h3 class="item-title">{bt.name}</h3>
+            <span class="item-count tabular">{bt.blindtestList.length}</span>
+          </div>
           <span class="item-user">{bt.username || 'Unknown'}</span>
           <div class="item-actions">
-            <button class="action-btn" title="Shuffle" onclick={() => play(bt, true)}><Shuffle size={15} stroke-width={1.8} /></button>
-            <button class="action-btn play" title="Play" onclick={() => play(bt)}><Play size={15} stroke-width={1.8} /></button>
+            <button class="btn-ghost sm" onclick={() => play(bt)}>Play</button>
+            <button class="btn-ghost sm" onclick={() => play(bt, true)}>Shuffle</button>
           </div>
         </div>
-      </div>
-    {/each}
-  </div>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <style>
-  .public-container { overflow: auto; flex: 1; padding: 24px; }
+  .public-container {
+    overflow: auto;
+    flex: 1;
+    padding: 32px;
+  }
+
   .section-header {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 20px;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--divider);
   }
+
   .section-title {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-size: 32px;
+    font-weight: 800;
     letter-spacing: -0.02em;
+    color: var(--text-primary);
   }
+
   .section-count {
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    padding: 2px 10px;
-    border-radius: 9999px;
+    font-size: 13px;
+    color: var(--text-secondary);
   }
+
   .public-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 12px;
   }
+
   .public-item {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    box-shadow: var(--glass-shadow);
-    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    transition: box-shadow 0.25s, border-color 0.25s, transform 0.25s;
-    position: relative;
-    overflow: hidden;
+    gap: 8px;
   }
-  .public-item::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-    pointer-events: none;
-  }
-  .public-item::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 1px; height: 100%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent, rgba(255, 255, 255, 0.3));
-    pointer-events: none;
-  }
-  .public-item:hover {
-    border-color: var(--accent-border);
-    box-shadow: var(--shadow-lg), 0 0 0 1px var(--accent-border);
-    transform: translateY(-2px);
-  }
+
   .item-header {
     display: flex;
-    align-items: flex-start;
+    align-items: baseline;
     justify-content: space-between;
     gap: 8px;
   }
+
   .item-title {
-    font-size: 0.9375rem;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 800;
     color: var(--text-primary);
-    line-height: 1.4;
+    line-height: 1.1;
   }
+
   .item-count {
-    font-size: 0.6875rem;
-    color: var(--accent);
-    background: var(--accent-dim);
-    border: 1px solid var(--accent-border);
-    padding: 2px 8px;
-    border-radius: 9999px;
+    font-size: 13px;
+    color: var(--accent-ink);
     white-space: nowrap;
     flex-shrink: 0;
-    font-weight: 600;
   }
-  .item-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: auto;
-  }
+
   .item-user {
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    font-weight: 500;
-  }
-  .item-actions { display: flex; gap: 6px; }
-  .action-btn {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
     font-size: 13px;
-    cursor: pointer;
-    padding: 5px 10px;
-    border-radius: var(--radius-md);
-    transition: all 0.15s;
+    color: var(--text-secondary);
+  }
+
+  .item-actions {
     display: flex;
-    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
   }
-  .action-btn:hover {
-    border-color: var(--border-2);
-    background: var(--border);
+
+  .loading-region {
+    position: relative;
+    height: 2px;
   }
-  .action-btn.play {
-    color: white;
-    background: var(--accent);
-    border-color: var(--accent);
-  }
-  .action-btn.play:hover {
-    background: var(--accent-hover);
-    border-color: var(--accent-hover);
+
+  @media (max-width: 760px) {
+    .public-container { padding: 16px; }
+    .section-title { font-size: 20px; }
   }
 </style>

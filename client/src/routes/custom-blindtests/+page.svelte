@@ -4,7 +4,7 @@
   import { getApi } from '$lib/api.js';
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { goto } from '$app/navigation';
-  import { Plus, Pencil, Trash2 } from 'lucide-svelte';
+  import { Plus } from 'lucide-svelte';
 
   let blindtests = $state([]);
 
@@ -47,7 +47,10 @@
   </div>
 
   {#if blindtests.length === 0}
-    <div class="empty-state">No blindtests yet</div>
+    <div class="empty-state">
+      <h2>No blindtests yet</h2>
+      <p>Build one from the clip library and choose whether to share it.</p>
+    </div>
   {/if}
 
   <div class="bt-list">
@@ -58,8 +61,8 @@
           <div class="bt-count">{bt.blindtestList.length} audios</div>
         </div>
         <div class="bt-actions">
-          <button class="btn-primary" onclick={() => goto(`/custom-blindtests/${bt._id}`)}><Pencil size={13} stroke-width={1.8} /> Edit</button>
-          <button class="btn-danger" onclick={() => deleteBt(bt._id)}><Trash2 size={13} stroke-width={1.8} /></button>
+          <button class="btn-secondary sm" onclick={() => goto(`/custom-blindtests/${bt._id}`)}>Edit</button>
+          <button class="btn-danger sm" onclick={() => deleteBt(bt._id)}>Delete</button>
         </div>
       </div>
     {/each}
@@ -67,57 +70,58 @@
 </div>
 
 <style>
-  .manage-page { padding: 28px 24px; overflow: auto; width: 100%; }
+  .manage-page { padding: 32px; overflow: auto; width: 100%; }
   .page-header {
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--divider);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
+    gap: 12px;
   }
   h1 {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 32px;
+    font-weight: 800;
     color: var(--text-primary);
     letter-spacing: -0.02em;
   }
+  /* Same skeleton every time: heading, one line, one action. Flush left. */
   .empty-state {
-    font-size: 0.875rem;
-    color: var(--text-dim);
-    padding: 48px 0;
-    text-align: center;
+    padding: 32px 0;
+    text-align: left;
   }
+  /* Rows of the same kind of thing: a ruled list. */
   .bt-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
   }
   .bt-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    padding: 18px 22px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--divider);
+    border-radius: 0;
+    padding: 12px 8px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    transition: box-shadow 0.2s, border-color 0.2s;
+    gap: 16px;
+    transition: background-color var(--duration-fast) ease-out;
   }
   .bt-item:hover {
-    border-color: var(--accent-border);
-    box-shadow: var(--shadow-lg);
+    background: rgba(245, 241, 232, 0.06);
   }
   .bt-info { display: flex; flex-direction: column; gap: 4px; }
   .bt-name {
-    font-size: 0.9375rem;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 800;
     color: var(--text-primary);
+    line-height: 1.1;
   }
   .bt-count {
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    font-weight: 500;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
   }
-  .bt-actions { display: flex; gap: 8px; }
+  .bt-actions { display: flex; gap: 8px; align-items: center; }
 </style>

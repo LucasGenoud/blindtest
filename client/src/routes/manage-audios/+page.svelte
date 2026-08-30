@@ -192,20 +192,20 @@
   <!-- Header -->
   <div class="page-header">
     <div class="header-left">
-      <h1>Manage Audios</h1>
-      <span class="total-badge">{audios.length} tracks</span>
+      <h1>Manage audios</h1>
+      <span class="total-badge tabular">{audios.length} tracks</span>
     </div>
     <div class="header-actions">
-      <button class="btn-primary btn-icon" onclick={() => showAddForm = !showAddForm}>
+      <button class="btn-primary" onclick={() => showAddForm = !showAddForm}>
         {#if showAddForm}
-          <X size={14} stroke-width={1.8} /> Cancel
+          <X size={16} stroke-width={2} /> Cancel
         {:else}
-          + Add Audio
+          Add audio
         {/if}
       </button>
       {#if $userPermission >= 3}
-        <button class="btn-primary btn-icon" onclick={downloadBackup}>
-          <Download size={14} stroke-width={1.8} /> Backup
+        <button class="btn-secondary" onclick={downloadBackup}>
+          <Download size={16} stroke-width={2} /> Backup
         </button>
       {/if}
     </div>
@@ -214,20 +214,20 @@
   <!-- Stats bar -->
   <div class="stats-bar">
     <button class="stat-chip {filterStatus === 'all' ? 'active' : ''}" onclick={() => filterStatus = 'all'}>
-      <span class="chip-dot dot-all"></span> All <strong>{counts.total}</strong>
+All <strong class="tabular">{counts.total}</strong>
     </button>
     <button class="stat-chip {filterStatus === 'ready' ? 'active' : ''}" onclick={() => filterStatus = 'ready'}>
-      <span class="chip-dot dot-ready"></span> In S3 <strong>{counts.ready}</strong>
+In S3 <strong class="tabular">{counts.ready}</strong>
     </button>
     <button class="stat-chip {filterStatus === 'processing' ? 'active' : ''}" onclick={() => filterStatus = 'processing'}>
-      <span class="chip-dot dot-processing"></span> Processing <strong>{counts.processing}</strong>
+Processing <strong class="tabular">{counts.processing}</strong>
     </button>
     <button class="stat-chip {filterStatus === 'error' ? 'active' : ''}" onclick={() => filterStatus = 'error'}>
-      <span class="chip-dot dot-error"></span> Error <strong>{counts.error}</strong>
+Error <strong class="tabular">{counts.error}</strong>
     </button>
     {#if counts.flagged > 0}
       <div class="stat-chip flag-chip">
-        <Flag size={13} stroke-width={1.8} /> Flagged <strong>{counts.flagged}</strong>
+        <Flag size={16} stroke-width={2} /> Flagged <strong class="tabular">{counts.flagged}</strong>
       </div>
     {/if}
     <!-- Extra filters -->
@@ -272,11 +272,12 @@
   <!-- Table -->
   <div class="table-wrap">
     {#if loading}
-      <div class="loading-state">
-        <span class="loading-spin">⟳</span> Loading audios…
-      </div>
+      <div class="loading-region"><div class="loading-line"></div></div>
     {:else if filteredAudios().length === 0}
-      <div class="empty-state">No audios match your filters.</div>
+      <div class="empty-state">
+        <h2>No audios match your filters</h2>
+        <p>Clear the search or pick a different status to see the rest of the library.</p>
+      </div>
     {:else}
       <table>
         <thead>
@@ -297,7 +298,7 @@
             <tr class:flagged={audio.flagged?.length > 0} transition:fade={{ duration: 150 }}>
               <!-- S3 Status -->
               <td>
-                <span class="status-badge {getStatusColor(audio.processingStatus)}">
+                <span class="status {getStatusColor(audio.processingStatus)}">
                   {getStatusLabel(audio.processingStatus)}
                 </span>
               </td>
@@ -319,7 +320,7 @@
                 {#if audio.flagged?.length > 0}
                   <div class="flag-cell">
                     <span class="flag-count"><Flag size={12} stroke-width={1.8} /> {audio.flagged.length}</span>
-                    <button class="btn-xs btn-warning" onclick={() => resetFlag(audio._id)}>Reset</button>
+                    <button class="btn-xs" onclick={() => resetFlag(audio._id)}>Reset</button>
                   </div>
                 {:else}
                   <span class="dim">—</span>
@@ -333,15 +334,15 @@
               <td>
                 <div class="action-group">
                   {#if audio.processingStatus === 'ready' && audio.s3ObjectKey}
-                    <button class="btn-xs btn-play" title="Preview audio" onclick={() => openPreview(audio)}><Play size={11} stroke-width={1.8} /></button>
+                    <button class="btn-xs" title="Preview audio" aria-label="Preview audio" onclick={() => openPreview(audio)}><Play size={14} stroke-width={2} /></button>
                   {/if}
                   {#if audio.processingStatus === 'error'}
-                    <button class="btn-xs btn-edit" title="Retry processing" onclick={() => reprocessAudio(audio._id)}><RefreshCw size={11} stroke-width={1.8} /></button>
+                    <button class="btn-xs" title="Retry processing" onclick={() => reprocessAudio(audio._id)}>Retry</button>
                   {/if}
-                  <a href={audio.videoUrl} target="_blank" class="btn-xs btn-link" title="Open YouTube"><ExternalLink size={11} stroke-width={1.8} /></a>
-                  <button class="btn-xs btn-edit" title="Edit" onclick={() => editAudio = {...audio}}><Pencil size={11} stroke-width={1.8} /></button>
+                  <a href={audio.videoUrl} target="_blank" class="btn-xs" title="Open source">Source</a>
+                  <button class="btn-xs" title="Edit" onclick={() => editAudio = {...audio}}>Edit</button>
                   {#if $userPermission >= 3}
-                    <button class="btn-xs btn-del" title="Delete" onclick={() => deleteAudio(audio._id)}><Trash2 size={11} stroke-width={1.8} /></button>
+                    <button class="btn-xs btn-del" title="Delete" onclick={() => deleteAudio(audio._id)}>Delete</button>
                   {/if}
                 </div>
               </td>
@@ -468,18 +469,18 @@
     gap: 10px;
   }
   h1 {
-    font-size: 1.25rem;
+    font-size: 20px;
     font-weight: 700;
     letter-spacing: -0.02em;
     color: var(--text-primary);
   }
   .total-badge {
-    font-size: 0.75rem;
+    font-size: 11px;
     color: var(--text-dim);
     background: var(--surface-2);
     border: 1px solid var(--border);
     padding: 2px 10px;
-    border-radius: 9999px;
+    border-radius: 0;
     font-weight: 500;
   }
   .header-actions {
@@ -496,42 +497,31 @@
     padding: 10px 14px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
+    border-radius: 0;
   }
   .stat-chip {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 5px 12px;
-    border-radius: var(--radius-md);
-    font-size: 0.8125rem;
+    border-radius: 0;
+    font-size: 13px;
     color: var(--text-secondary);
     background: transparent;
-    border: 1px solid transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: color var(--duration-fast) ease-out, background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
     font-weight: 500;
   }
   .stat-chip:hover { background: var(--surface-2); }
   .stat-chip.active {
-    background: var(--accent-dim);
-    border-color: var(--accent-border);
     color: var(--accent);
+    border-bottom-color: var(--accent);
   }
   .stat-chip strong { font-weight: 700; }
   .flag-chip { cursor: default; color: var(--red); }
   .flag-chip strong { color: var(--red); }
-  .chip-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .dot-all { background: var(--text-dim); }
-  .dot-ready { background: var(--green); }
-  .dot-processing { background: var(--orange); }
-  .dot-error { background: var(--red); }
 
   .search-wrap {
     margin-left: auto;
@@ -543,25 +533,25 @@
     position: absolute;
     left: 10px;
     color: var(--text-dim);
-    font-size: 1rem;
+    font-size: 15px;
     pointer-events: none;
   }
   .search-input {
     padding-left: 28px;
     width: 220px;
-    font-size: 0.75rem;
+    font-size: 11px;
   }
 
   /* ── Add card ── */
   .add-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 18px 20px;
   }
   .add-card-title {
     font-family: var(--mono);
-    font-size: 0.65rem;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-dim);
     letter-spacing: 0.1em;
@@ -584,7 +574,7 @@
     border: none;
     padding: 0;
     font-family: var(--mono);
-    font-size: 0.6rem;
+    font-size: 11px;
     color: var(--text-dim);
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -598,9 +588,9 @@
 
   /* ── Category / superflus filter selects ── */
   .filter-select {
-    font-size: 0.75rem;
+    font-size: 11px;
     padding: 5px 8px;
-    border-radius: var(--radius-md);
+    border-radius: 0;
     border: 1px solid var(--border);
     background: var(--surface-2);
     color: var(--text-secondary);
@@ -611,7 +601,7 @@
   /* ── Dim cell ── */
   .dim-cell {
     color: var(--text-dim);
-    font-size: 0.7rem;
+    font-size: 11px;
   }
 
   /* ── Pagination bar ── */
@@ -619,156 +609,121 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 4px;
+    padding: 12px 0;
     flex-shrink: 0;
     flex-wrap: wrap;
+    border-top: 2px solid var(--divider);
   }
   .pagination-info {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    color: var(--text-dim);
+    font-size: 13px;
+    color: var(--text-secondary);
     min-width: 90px;
+    font-variant-numeric: tabular-nums;
   }
   .pagination-controls {
     display: flex;
-    gap: 3px;
+    gap: 8px;
     align-items: center;
   }
-  .page-btn {
-    min-width: 28px;
-    height: 28px;
-    padding: 0 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
+  /* Pages are a row of labels, not a row of boxes. */
+  .page-btn,
+  .page-size-btn {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 4px;
+    border-radius: 0;
+    border: 0;
     background: transparent;
     color: var(--text-secondary);
-    font-family: var(--mono);
-    font-size: 0.72rem;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: color var(--duration-fast) ease-out;
   }
-  .page-btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--border-2); }
-  .page-btn.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); font-weight: 700; }
+  .page-btn:hover:not(:disabled),
+  .page-size-btn:hover { color: var(--accent-ink); }
+  .page-btn.active,
+  .page-size-btn.active { color: var(--accent); font-weight: 800; }
   .page-btn:disabled { opacity: 0.3; cursor: default; }
   .page-size-select {
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 8px;
   }
   .page-size-label {
-    font-family: var(--mono);
-    font-size: 0.62rem;
-    color: var(--text-dim);
-    letter-spacing: 0.06em;
-    margin-right: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
   }
-  .page-size-btn {
-    min-width: 36px;
-    height: 24px;
-    padding: 0 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-dim);
-    font-family: var(--mono);
-    font-size: 0.68rem;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .page-size-btn:hover { background: var(--surface-2); }
-  .page-size-btn.active { background: var(--accent-dim); border-color: var(--accent-border); color: var(--accent); font-weight: 700; }
 
   /* ── Table ── */
   .table-wrap {
     flex: 1;
     overflow: auto;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    border: 0;
+    border-radius: 0;
   }
-  .loading-state, .empty-state {
-    padding: 48px;
-    text-align: center;
-    color: var(--text-dim);
-    font-family: var(--mono);
-    font-size: 0.78rem;
-  }
+  .loading-region { position: relative; height: 2px; }
   table {
     width: 100%;
     border-collapse: collapse;
   }
   th {
     text-align: left;
-    padding: 10px 14px;
-    font-family: var(--mono);
-    font-size: 0.6rem;
-    color: var(--text-dim);
+    padding: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--divider);
     position: sticky;
     top: 0;
-    background: var(--surface);
+    background: var(--bg);
     z-index: 1;
     white-space: nowrap;
   }
   td {
-    padding: 9px 14px;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.78rem;
+    padding: 8px;
+    border-bottom: 1px solid var(--divider);
+    font-size: 13px;
     color: var(--text-secondary);
     white-space: nowrap;
   }
   td.mono {
-    font-family: var(--mono);
-    font-size: 0.72rem;
+    font-size: 13px;
     color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
   }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface); }
-  tr.flagged td { background: rgba(248, 113, 113, 0.04); }
-  tr.flagged:hover td { background: rgba(248, 113, 113, 0.08); }
+  /* Numbers right-aligned and tabular. */
+  th.num, td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  tr:hover td { background: rgba(245, 241, 232, 0.06); }
+  tr.flagged td { color: var(--text-primary); }
 
-  /* ── Status badges ── */
-  .status-badge {
-    font-family: var(--mono);
-    font-size: 0.62rem;
+  /* ── Status ── */
+  .status {
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.04em;
-    padding: 3px 8px;
-    border-radius: 4px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     white-space: nowrap;
+    color: var(--text-secondary);
   }
-  .status-ready {
-    background: rgba(74, 222, 128, 0.1);
-    color: var(--green);
-    border: 1px solid rgba(74, 222, 128, 0.25);
-  }
-  .status-processing {
-    background: rgba(251, 146, 60, 0.1);
-    color: var(--orange);
-    border: 1px solid rgba(251, 146, 60, 0.25);
-  }
-  .status-error {
-    background: rgba(248, 113, 113, 0.1);
-    color: var(--red);
-    border: 1px solid rgba(248, 113, 113, 0.25);
-  }
-  .status-unknown {
-    background: var(--surface-2);
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-  }
+  .status-ready { color: var(--text-primary); }
+  .status-processing { color: var(--text-secondary); }
+  .status-error { color: var(--signal-wrong); }
+  .status-unknown { color: var(--text-dim); }
 
   /* ── Category badge ── */
   .cat-badge {
-    font-family: var(--mono);
-    font-size: 0.62rem;
+    font-size: 13px;
     color: var(--text-dim);
-    background: var(--surface-2);
-    padding: 2px 7px;
-    border-radius: 3px;
-    letter-spacing: 0.04em;
   }
 
   /* ── Answer cell ── */
@@ -779,16 +734,15 @@
   }
   .answer-text {
     color: var(--text-primary);
-    font-size: 0.8rem;
+    font-size: 13px;
   }
   .sup-tag {
-    font-family: var(--mono);
-    font-size: 0.58rem;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
     color: var(--text-dim);
-    background: var(--surface-2);
-    padding: 1px 5px;
-    border-radius: 3px;
-    margin-left: 6px;
+    margin-left: 8px;
   }
 
   /* ── Flags cell ── */
@@ -799,7 +753,7 @@
   }
   .flag-count {
     font-family: var(--mono);
-    font-size: 0.7rem;
+    font-size: 11px;
     color: var(--red);
   }
   .dim { color: var(--text-dim); }
@@ -807,7 +761,7 @@
   /* ── Action buttons ── */
   .action-group {
     display: flex;
-    gap: 4px;
+    gap: 8px;
     align-items: center;
   }
   .btn-xs {
@@ -815,45 +769,19 @@
     align-items: center;
     justify-content: center;
     padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-family: var(--mono);
-    font-weight: 500;
+    border-radius: 0;
+    font-size: 11px;
+    font-weight: 600;
     letter-spacing: 0.04em;
     cursor: pointer;
-    border: 1px solid var(--border);
+    border: 0;
     background: transparent;
-    color: var(--text-secondary);
-    transition: all 0.15s;
+    color: var(--accent-ink);
+    transition: color var(--duration-fast) ease-out;
     text-decoration: none;
   }
-  .btn-xs:hover { background: var(--surface-2); border-color: var(--border-2); }
-  .btn-play {
-    border-color: rgba(74, 222, 128, 0.3);
-    color: var(--green);
-  }
-  .btn-play:hover {
-    background: rgba(74, 222, 128, 0.1);
-    border-color: var(--green);
-  }
-  .btn-link {
-    border-color: rgba(96, 165, 250, 0.3);
-    color: var(--blue);
-  }
-  .btn-link:hover {
-    background: rgba(96, 165, 250, 0.1);
-    border-color: var(--blue);
-  }
-  .btn-edit { color: var(--accent); border-color: var(--accent-border); }
-  .btn-edit:hover { background: var(--accent-dim); border-color: var(--accent); }
-  .btn-del { color: var(--red); border-color: rgba(248, 113, 113, 0.3); }
-  .btn-del:hover { background: rgba(248, 113, 113, 0.1); border-color: var(--red); }
-  .btn-warning {
-    color: var(--orange);
-    border-color: rgba(251, 146, 60, 0.3);
-    background: transparent;
-  }
-  .btn-warning:hover { background: rgba(251, 146, 60, 0.1); border-color: var(--orange); }
+  .btn-xs:hover { color: var(--accent); text-decoration: none; }
+  .btn-del { color: var(--signal-wrong); }
 
   /* ── Overlay & Popups ── */
   .overlay {
@@ -864,16 +792,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(6px);
   }
   .popup {
     background: var(--surface);
     border: 1px solid var(--border-2);
-    border-radius: 10px;
+    border-radius: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
   }
   .popup-header {
     display: flex;
@@ -884,7 +810,7 @@
   }
   .popup-title {
     font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
   }
@@ -897,11 +823,11 @@
     background: transparent;
     border: none;
     color: var(--text-dim);
-    font-size: 0.9rem;
+    font-size: 15px;
     cursor: pointer;
     padding: 4px 6px;
-    border-radius: 4px;
-    transition: all 0.15s;
+    border-radius: 0;
+    transition: color var(--duration-fast) ease-out, background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
   }
   .close-btn:hover { color: var(--text-primary); background: var(--surface-2); }
 
@@ -915,7 +841,7 @@
   }
   .field-label {
     font-family: var(--mono);
-    font-size: 0.6rem;
+    font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-dim);
@@ -954,14 +880,14 @@
   }
   .meta-label {
     font-family: var(--mono);
-    font-size: 0.58rem;
+    font-size: 11px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-dim);
   }
   .meta-item {
     font-family: var(--mono);
-    font-size: 0.75rem;
+    font-size: 11px;
     color: var(--text-secondary);
   }
 </style>

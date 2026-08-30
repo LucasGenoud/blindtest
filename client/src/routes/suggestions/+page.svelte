@@ -19,7 +19,10 @@
     <h1>Suggestions</h1>
   </div>
   {#if suggestions.length === 0}
-    <div class="empty-state">No suggestions yet</div>
+    <div class="empty-state">
+      <h2>No suggestions yet</h2>
+      <p>Clips submitted by players appear here for a contributor to review.</p>
+    </div>
   {:else}
     <table>
       <thead><tr><th>Category</th><th>Answer</th><th>URL</th><th>Submitted by</th><th>Date</th></tr></thead>
@@ -39,59 +42,60 @@
 </div>
 
 <style>
-  .manage-page { padding: 28px 24px; overflow: auto; width: 100%; }
+  .manage-page { padding: 32px; overflow: auto; width: 100%; }
   .page-header {
     margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--divider);
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
   }
   h1 {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 32px;
+    font-weight: 800;
     color: var(--text-primary);
     letter-spacing: -0.02em;
   }
+  /* Same skeleton every time: heading, one line, one action. Flush left. */
   .empty-state {
-    font-size: 0.875rem;
-    color: var(--text-dim);
-    padding: 48px 0;
-    text-align: center;
+    padding: 32px 0;
+    text-align: left;
   }
-  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-card); }
+  /* A ruled list, not a filled panel. */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+    border-radius: 0;
+    border: 0;
+  }
   th {
     text-align: left;
-    padding: 12px 16px;
-    font-size: 0.6875rem;
+    padding: 8px;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--text-dim);
-    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--border);
+    background: transparent;
+    border-bottom: 2px solid var(--divider);
   }
   td {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.875rem;
+    padding: 8px;
+    border-bottom: 1px solid var(--divider);
+    font-size: 13px;
     color: var(--text-secondary);
   }
   td.mono {
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 13px;
     color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
   }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface-2); }
+  tr:hover td { background: rgba(245, 241, 232, 0.06); }
   .cat-badge {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--accent);
-    background: var(--accent-dim);
-    border: 1px solid var(--accent-border);
-    padding: 2px 10px;
-    border-radius: 9999px;
+    font-size: 13px;
+    color: var(--text-dim);
   }
 </style>

@@ -47,3 +47,6 @@ seaweed_data/
 
 # Superpowers tool state (pids, logs)
 .superpowers/
+
+# Design handoff bundle: only DESIGN_GUIDELINES.md (copied to docs/) belongs in the repo
+design_handoff_guidelines/

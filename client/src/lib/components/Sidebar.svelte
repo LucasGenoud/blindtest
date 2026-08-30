@@ -64,23 +64,23 @@
 
 <svelte:window onclick={(e) => { if (dropdownOpen) handleClickOutside(e); }} />
 
-<div class="sidebar-panel flex h-full w-full shrink-0 flex-col border-r md:w-[300px] md:max-w-[300px]">
+<div class="sidebar-panel flex h-full w-full shrink-0 flex-col md:w-[300px] md:max-w-[300px]">
   <div class="flex flex-1 flex-col gap-1.5 overflow-auto px-4 py-5">
     <div class="section-label">Configuration</div>
 
-    <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Number of guesses</div>
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Number of guesses</div>
     <input type="number" min="10" bind:value={$numberOfAudios} style="width:120px" />
 
-    <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Time to guess: <span class="ml-1 font-bold text-accent">{$timeToGuess}s</span></div>
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Time to guess: <span class="ml-1 font-bold text-accent">{$timeToGuess}s</span></div>
     <input type="range" min="5" max="30" bind:value={$timeToGuess} />
 
-    <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Time with answer: <span class="ml-1 font-bold text-accent">{$timeWithAnswer}s</span></div>
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Time with answer: <span class="ml-1 font-bold text-accent">{$timeWithAnswer}s</span></div>
     <input type="range" min="5" max="30" bind:value={$timeWithAnswer} />
 
-    <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">
       <span>Categories</span>
-      <button class="btn-primary ml-auto px-2.5 py-[3px] text-[0.7rem]" onclick={addAll}>All</button>
-      <button class="btn-primary ml-1 px-2.5 py-[3px] text-[0.7rem]" onclick={removeAll}>None</button>
+      <button class="btn-secondary sm ml-auto" onclick={addAll}>All</button>
+      <button class="btn-secondary sm ml-2" onclick={removeAll}>None</button>
     </div>
 
     {#each categoryListKeyLabel as cat}
@@ -89,34 +89,34 @@
       {@const approx = total > 0 ? Math.floor($numberOfAudios * ($dataCategories[cat.key] || 0) / total) : 0}
       <div>
         <div class="mb-1 flex items-center justify-between">
-          <span class="text-[0.8rem] font-medium text-text-secondary">{cat.label}</span>
-          <span class="font-mono text-[0.7rem] text-text-dim">{pct}% ~{approx}</span>
+          <span class="text-sm text-text-primary">{cat.label}</span>
+          <span class="font-mono text-xs text-text-dim">{pct}% ~{approx}</span>
         </div>
         <input type="range" min="0" max="100" value={$dataCategories[cat.key] || 0}
           oninput={(e) => updateCat(cat.key, parseInt(e.target.value))} />
       </div>
     {/each}
 
-    <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Show category</div>
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Show category</div>
     <label class="toggle" class:active={$showCategory}>
       <input type="checkbox" bind:checked={$showCategory} />
       {$showCategory ? 'Show' : 'Hide'}
     </label>
 
-    <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Use superflus</div>
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Use superflus</div>
     <label class="toggle" class:active={$useSuperflus}>
       <input type="checkbox" bind:checked={$useSuperflus} />
       {$useSuperflus ? 'Use' : 'Discard'}
     </label>
 
-    <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Prioritize less used</div>
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Prioritize less used</div>
     <label class="toggle" class:active={$prioritizeLessUsedAudios}>
       <input type="checkbox" bind:checked={$prioritizeLessUsedAudios} />
       {$prioritizeLessUsedAudios ? 'Prioritize' : 'Random'}
     </label>
 
     {#if contributorUsers.length > 0}
-      <div class="mt-4 flex items-center text-xs font-semibold text-text-secondary first:mt-0">Exclude contributors</div>
+      <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Exclude contributors</div>
       <div class="contributor-dropdown" bind:this={dropdownEl}>
         <button
           type="button"
@@ -157,15 +157,11 @@
     {/if}
   </div>
 
-  <div class="sidebar-footer flex flex-col gap-3 border-t p-4">
-    <div class="text-center text-xs text-text-dim">
-      ~{estimatedTime()} min estimated
+  <div class="sidebar-footer flex flex-col gap-3 p-4">
+    <div class="text-xs font-semibold uppercase tracking-[0.1em] text-text-dim">
+      <span class="tabular">~{estimatedTime()}</span> min estimated
     </div>
-    <button
-      class="w-full flex items-center justify-center gap-2 rounded-md px-3 py-3 text-[0.9rem] font-semibold tracking-[0.01em] text-white shadow-[0_2px_8px_var(--accent-dim)] transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none [background:var(--accent)] hover:-translate-y-px hover:[background:var(--accent-hover)] hover:[box-shadow:0_4px_14px_var(--accent-dim)] disabled:hover:translate-y-0 disabled:hover:[background:var(--accent)] disabled:hover:[box-shadow:none]"
-      class:btn-pulse={!!getTotal()}
-      disabled={!getTotal()}
-      onclick={startBlindtest}>
+    <button class="btn-primary w-full" disabled={!getTotal()} onclick={startBlindtest}>
       <Play size={16} stroke-width={2} /> Start blindtest
     </button>
   </div>
@@ -173,93 +169,96 @@
 
 <style>
   .sidebar-panel {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-right-color: var(--glass-border);
+    background: var(--bg);
+    border-right: 2px solid var(--divider);
   }
 
   .sidebar-footer {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-top-color: var(--glass-border);
+    border-top: 2px solid var(--divider);
   }
 
-  [data-theme='dark'] .sidebar-footer {
-    background: rgba(255, 255, 255, 0.04);
-  }
   .contributor-dropdown {
     position: relative;
     width: 100%;
   }
+
   .contributor-trigger {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 6px 10px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-secondary);
-    font-size: 0.75rem;
+    min-height: 36px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: 0;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 400;
     cursor: pointer;
     text-align: left;
-    transition: border-color 0.15s;
+    transition: border-color var(--duration-fast) ease-out;
   }
+
   .contributor-trigger:hover,
   .contributor-trigger:focus-visible {
-    border-color: var(--border-2);
+    border-color: var(--accent);
     outline: none;
   }
+
   .chevron {
     flex-shrink: 0;
-    transition: transform 0.15s;
+    transition: transform var(--duration-fast) ease-out;
     color: var(--text-dim);
   }
+
   .chevron.open {
     transform: rotate(180deg);
   }
+
   .contributor-menu {
     position: absolute;
     z-index: 50;
-    top: calc(100% + 4px);
+    top: 100%;
     left: 0;
     right: 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    box-shadow: var(--shadow-lg);
+    background: var(--surface-2);
+    border-top: 2px solid var(--divider);
+    border-radius: 0;
     list-style: none;
     margin: 0;
-    padding: 4px;
+    padding: 0;
     max-height: 200px;
     overflow-y: auto;
   }
+
   .contributor-option {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
-    border-radius: 4px;
+    padding: 8px 12px;
+    border-radius: 0;
     cursor: pointer;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    transition: background 0.1s;
+    font-size: 13px;
+    color: var(--text-primary);
+    transition: color var(--duration-fast) ease-out;
     user-select: none;
     width: 100%;
   }
+
   .contributor-option:hover {
-    background: var(--surface-2);
+    color: var(--accent-ink);
   }
+
   .contributor-option.selected {
-    color: var(--red);
+    color: var(--accent);
   }
+
   .contributor-option input[type="checkbox"] {
-    accent-color: var(--red);
+    accent-color: var(--accent);
     width: 13px;
     height: 13px;
+    min-height: 0;
     cursor: pointer;
     flex-shrink: 0;
   }

@@ -60,32 +60,84 @@
 
 <div class="popup-overlay" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="popup-box">
-    <div class="relative flex border-b border-border px-6">
-      <div
-        class={`absolute bottom-0 h-0.5 rounded-t-sm transition-[left] duration-300 ${mode === 'signin' ? 'left-6' : 'left-1/2'}`}
-        style="width: calc(50% - 24px); background: var(--accent);"
-      ></div>
-      <div class={`flex-1 cursor-pointer py-4 text-center text-sm transition-colors duration-200 ${mode === 'signin' ? 'font-semibold text-accent' : 'font-medium text-text-dim hover:text-text-secondary'}`} onclick={() => mode = 'signin'}>Sign in</div>
-      <div class={`flex-1 cursor-pointer py-4 text-center text-sm transition-colors duration-200 ${mode === 'signup' ? 'font-semibold text-accent' : 'font-medium text-text-dim hover:text-text-secondary'}`} onclick={() => mode = 'signup'}>Sign up</div>
+    <div class="tabs">
+      <button class="tab" class:active={mode === 'signin'} onclick={() => mode = 'signin'}>Sign in</button>
+      <button class="tab" class:active={mode === 'signup'} onclick={() => mode = 'signup'}>Sign up</button>
     </div>
 
-    <div class="flex flex-col gap-3 px-6 py-7">
+    <div class="flex flex-col gap-4 p-6">
       {#if mode === 'signup'}
-        <input bind:value={name} placeholder="Username" />
+        <label class="field">
+          <span class="field-label">Username</span>
+          <input bind:value={name} placeholder="How other players see you" />
+        </label>
       {/if}
-      <input bind:value={email} placeholder="Email" type="email" />
-      <input bind:value={password} placeholder="Password" type="password"
-        onkeydown={(e) => e.key === 'Enter' && (mode === 'signin' ? signin() : signup())} />
+
+      <label class="field">
+        <span class="field-label">Email</span>
+        <input bind:value={email} type="email" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Password</span>
+        <input bind:value={password} type="password"
+          onkeydown={(e) => e.key === 'Enter' && (mode === 'signin' ? signin() : signup())} />
+      </label>
 
       {#if error}
-        <div class="rounded-md border px-3.5 py-2.5 text-[0.8125rem] text-red" style="background: rgba(220, 38, 38, 0.06); border-color: rgba(220, 38, 38, 0.2);">{error}</div>
+        <!-- One line saying what happened and what to do, no box, no colour alone. -->
+        <p class="field-error">{error}</p>
       {/if}
 
-      <button class="mt-1 w-full rounded-md px-3 py-3 text-[0.9rem] font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 [background:var(--accent)] hover:-translate-y-px hover:[background:var(--accent-hover)] hover:[box-shadow:0_4px_12px_var(--accent-dim)] disabled:hover:translate-y-0 disabled:hover:[background:var(--accent)] disabled:hover:[box-shadow:none]"
+      <button class="btn-primary w-full"
         disabled={loading}
         onclick={() => mode === 'signin' ? signin() : signup()}>
-        {mode === 'signin' ? 'Sign in' : 'Sign up'}
+        {mode === 'signin' ? 'Sign in' : 'Create account'}
       </button>
     </div>
   </div>
 </div>
+
+<style>
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid var(--divider);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 16px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    transition: color var(--duration-fast) ease-out;
+  }
+
+  .tab:hover { color: var(--text-primary); }
+
+  .tab.active {
+    color: var(--accent);
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+  }
+
+  .field-error {
+    font-size: 13px;
+    color: var(--signal-wrong);
+  }
+</style>

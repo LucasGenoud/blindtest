@@ -6,7 +6,7 @@
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume } from '$lib/stores/gameStore.js';
   import confetti from 'canvas-confetti';
-  import { Pause, Play, EyeOff, SkipForward, ExternalLink, Flag, X, Loader2 } from 'lucide-svelte';
+  import { Pause, Play, ExternalLink, Flag } from 'lucide-svelte';
 
   let { blindtestId = null, randomOrder = false } = $props();
 
@@ -284,76 +284,56 @@
   $effect(() => { if (player) { player.volume = $volume / 100; } });
 </script>
 
+<!-- In game the nav bar is replaced by a single line: round counter left, exit
+     right. Media is full-bleed, controls sit in a fixed bottom bar, and the view
+     never scrolls. -->
 <div class="player-container">
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <div class="toolbar-left">
-      {#if $blindtestStatus === 'started'}
-        <button class="btn-circle" title="Pause" onclick={pauseBlindtest}><Pause size={15} stroke-width={1.8} /></button>
-      {:else if $blindtestStatus === 'paused'}
-        <button class="btn-circle" title="Resume" onclick={resumeBlindtest}><Play size={15} stroke-width={1.8} /></button>
+  <div class="round-line">
+    <div class="round-counter">
+      <span class="round-current tabular">{$currentAudioNumber}</span>
+      <span class="round-total tabular">/ {totalAudios}</span>
+      {#if $currentAudioData && $showCategory && currentCategory}
+        <span class="round-category">{currentCategory.label}</span>
       {/if}
-      <button class="btn-circle" title="Reveal" disabled={$showAnswer} onclick={revealAnswer}><EyeOff size={15} stroke-width={1.8} /></button>
-      {#if $currentAudioNumber < totalAudios}
-        <button class="btn-circle" title="Skip" onclick={skipAudio}><SkipForward size={15} stroke-width={1.8} /></button>
-      {/if}
-      <button class="btn-circle" title="YouTube" onclick={openYoutube}><ExternalLink size={15} stroke-width={1.8} /></button>
     </div>
-
-    <div class="toolbar-right">
-      {#if totalAudios > 0}
-        <span class="progress-label">{$currentAudioNumber}/{totalAudios}</span>
-      {/if}
-      {#if $userPermission > 0 && !audioFlagged}
-        <input bind:value={reportMessage} placeholder="Report..." style="width:140px" />
-        <button class="btn-circle warn" title="Flag" onclick={() => flagAudio()}><Flag size={15} stroke-width={1.8} /></button>
-      {/if}
-      <button class="btn-circle danger" title="Stop" onclick={stopBlindtest}><X size={15} stroke-width={1.8} /></button>
-    </div>
+    <button class="btn-ghost sm" onclick={stopBlindtest}>Exit</button>
   </div>
 
-  <!-- Progress bar -->
-  {#if totalAudios > 0}
-    <div class="progress-track">
-      <div class="progress-fill" style="width:{Math.round($currentAudioNumber / totalAudios * 100)}%"></div>
-    </div>
-  {/if}
-
-  <!-- Category -->
-  {#if $currentAudioData && $showCategory && currentCategory}
-    <div class="category-label">{currentCategory.label}</div>
-  {/if}
+  <div class="progress-bar">
+    <div class="fill" style="width:{totalAudios ? Math.round($currentAudioNumber / totalAudios * 100) : 0}%"></div>
+  </div>
 
   <!-- Main area -->
   <div class="blindtest-main">
+    {#if videoBuffering && !loadError && !$showAnswer}
+      <div class="loading-line"></div>
+    {/if}
+
     {#if !$showAnswer}
       {#if loadError}
-        <div class="loading-state">
-          <div class="loading-text">{loadError}</div>
+        <div class="state-block">
+          <h2>Could not load the next clip</h2>
+          <p>{loadError}</p>
+          <button class="btn-secondary" onclick={stopBlindtest}>Leave game</button>
         </div>
-      {:else if videoBuffering}
-        <div class="loading-state">
-          <div class="loading-text">Loading</div>
-          <Loader2 size={48} class="loading-spin text-accent" stroke-width={1.5} />
-        </div>
-      {:else}
-        <div class="countdown-circle">
+      {:else if !videoBuffering}
+        <!-- The countdown ring is the second of the two circular exceptions. -->
+        <div class="countdown-circle" role="timer" aria-live="off">
           <svg width="260" height="260" viewBox="0 0 260 260">
-            <circle cx="130" cy="130" r="120" fill="none" stroke="var(--border)" stroke-width="3"/>
-            <circle cx="130" cy="130" r="120" fill="none" stroke="var(--accent)" stroke-width="3"
+            <circle cx="130" cy="130" r="120" fill="none" stroke="var(--divider)" stroke-width="2"/>
+            <circle cx="130" cy="130" r="120" fill="none" stroke="var(--accent)" stroke-width="2"
               stroke-dasharray="{2 * Math.PI * 120}"
               stroke-dashoffset="{2 * Math.PI * 120 * (1 - Math.max(0, Math.min(1, $timeToGuess > 0 ? preciseCountDown / $timeToGuess : 0)))}"
-              stroke-linecap="round"
               style="transition:stroke-dashoffset 0.1s linear" />
           </svg>
           <span class="value">{countDown}</span>
         </div>
       {/if}
     {:else}
-      <div class="answer-box answer-enter">{currentAnswer}</div>
+      <div class="answer-box answer-enter" aria-live="polite">{currentAnswer}</div>
     {/if}
 
-    <!-- Native Video player (always rendered, visibility toggled) -->
+    <!-- Native video player (always rendered, visibility toggled) -->
     <div class="yt-wrapper" class:visible={$showAnswer && $currentAudioData}>
       <video bind:this={player} class="native-player" playsinline></video>
     </div>
@@ -362,196 +342,204 @@
       <div class="audio-meta">
         <span class="meta-label">by</span>
         <span class="meta-val">{$currentAudioData.submittedByUsername || 'Unknown'}</span>
-        <span class="meta-sep">·</span>
-        <span class="meta-label">views</span>
-        <span class="meta-val">{($currentAudioData.count || 0) + 1}</span>
+        <span class="meta-label">plays</span>
+        <span class="meta-val tabular">{($currentAudioData.count || 0) + 1}</span>
       </div>
     {/if}
+  </div>
+
+  <!-- Fixed 96px control bar. Only play/pause is icon-only; every other action
+       carries a word. -->
+  <div class="control-bar">
+    <div class="control-group">
+      {#if $blindtestStatus === 'started'}
+        <button class="btn-circle" title="Pause" aria-label="Pause" onclick={pauseBlindtest}><Pause size={16} stroke-width={2} /></button>
+      {:else if $blindtestStatus === 'paused'}
+        <button class="btn-circle" title="Resume" aria-label="Resume" onclick={resumeBlindtest}><Play size={16} stroke-width={2} /></button>
+      {/if}
+      <button class="btn-secondary" disabled={$showAnswer} onclick={revealAnswer}>Reveal answer</button>
+      {#if $currentAudioNumber < totalAudios}
+        <button class="btn-secondary" onclick={skipAudio}>Skip clip</button>
+      {/if}
+      <button class="btn-ghost" onclick={openYoutube}>
+        <ExternalLink size={16} stroke-width={2} /> Open source
+      </button>
+    </div>
+
+    <div class="control-group">
+      {#if $userPermission > 0 && !audioFlagged}
+        <input bind:value={reportMessage} placeholder="What is wrong with this clip?" aria-label="Report message" />
+        <button class="btn-danger" onclick={() => flagAudio()}>
+          <Flag size={16} stroke-width={2} /> Report
+        </button>
+      {/if}
+    </div>
   </div>
 </div>
 
 <style>
   .player-container {
-    width: 100%; height: 100%;
-    padding: 0; text-align: center;
-    display: flex; flex-direction: column;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background: var(--bg);
   }
-  .toolbar {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    gap: 8px;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    box-shadow: var(--shadow-card);
-    animation: pageEnter 200ms var(--easing-primary) forwards;
-    border-bottom: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 20px rgba(0, 0, 0, 0.05);
-  }
-  .toolbar-left, .toolbar-right {
+
+  .round-line {
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 32px;
+    flex-shrink: 0;
   }
-  .btn-circle.warn {
-    border-color: rgba(234, 88, 12, 0.35);
-    color: var(--orange);
+
+  .round-counter {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
   }
-  .btn-circle.warn:hover {
-    background: rgba(234, 88, 12, 0.08);
+
+  .round-current {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent);
   }
-  .btn-circle.danger {
-    border-color: rgba(220, 38, 38, 0.35);
-    color: var(--red);
+
+  .round-total {
+    font-size: 13px;
+    color: var(--text-secondary);
   }
-  .btn-circle.danger:hover {
-    background: rgba(220, 38, 38, 0.08);
+
+  .round-category {
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
   }
-  .progress-label {
-    font-family: var(--mono);
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    font-weight: 500;
-  }
-  .progress-track {
-    height: 3px;
-    background: var(--border);
-    width: 100%;
-  }
-  .progress-fill {
-    height: 100%;
-    background: var(--accent);
-    transition: width 0.3s ease;
-    border-radius: 0 2px 2px 0;
-    position: relative;
-  }
-  .progress-fill::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: -2px;
-    bottom: -2px;
-    width: 2px;
-    border-radius: 999px;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent), 0 0 16px var(--accent-dim);
-  }
+
   .blindtest-main {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    position: relative;
-    gap: 20px;
-  }
-  .loading-state {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    justify-content: center;
+    position: relative;
+    gap: 24px;
+    min-height: 0;
+    padding: 24px 32px;
   }
-  .loading-text {
-    font-size: 0.875rem;
-    color: var(--text-dim);
-    font-weight: 500;
-    letter-spacing: 0.05em;
+
+  /* Flush left, one heading, one line, one action. */
+  .state-block {
+    align-self: flex-start;
+    max-width: 480px;
   }
+
+  .state-block h2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .state-block p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  /* Centred: one of the two deliberate exceptions. */
   .countdown-circle {
     position: relative;
-    display: inline-flex; align-items: center; justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
+
   .countdown-circle .value {
     position: absolute;
-    font-family: var(--mono);
-    font-size: 96px;
-    font-weight: 700;
+    font-size: 64px;
+    font-weight: 800;
     color: var(--text-primary);
-    letter-spacing: -0.04em;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
   }
+
+  /* The other exception, and the only moment that gets a movement. */
   .answer-box {
-    font-size: 2.5rem;
-    font-weight: 700;
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
     color: var(--accent);
-    padding: 20px 40px;
-    border: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--radius-xl);
-    letter-spacing: -0.02em;
-    box-shadow: var(--glass-shadow);
-    position: relative;
-    overflow: hidden;
+    text-align: center;
+    max-width: 1200px;
   }
-  .answer-box::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-    pointer-events: none;
-  }
+
   .answer-enter {
-    animation: answerReveal 300ms var(--easing-spring) forwards;
+    animation: answerReveal var(--duration-reveal) var(--easing-primary) forwards;
   }
+
+  /* The media is the picture: full-bleed, nothing framing it. */
   .yt-wrapper {
-    width: 80%; max-width: 800px; aspect-ratio: 16/9;
-    pointer-events: none; display: none;
-    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 1200px;
+    aspect-ratio: 16/9;
+    min-height: 0;
+    pointer-events: none;
+    display: none;
     overflow: hidden;
-    box-shadow: var(--shadow-lg);
   }
+
   .yt-wrapper.visible { display: block; }
+
   .native-player {
-    width: 100%; height: 100%; object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
-  .category-label {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--accent);
-    padding: 8px 20px;
-    background: var(--surface-raised, var(--surface));
-    border: 2px solid var(--accent);
-    border-radius: 9999px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    box-shadow: var(--shadow-card);
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    padding: 6px 16px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    border-radius: 9999px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    box-shadow: var(--glass-shadow);
-  }
+
   .audio-meta {
-    position: fixed; bottom: 16px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    padding: 8px 16px;
-    border-radius: 9999px;
-    font-size: 0.8125rem;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .meta-label { color: var(--text-secondary); }
+  .meta-val { color: var(--text-primary); font-weight: 600; }
+
+  .control-bar {
+    height: 96px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
-    box-shadow: var(--glass-shadow);
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 32px;
+    border-top: 2px solid var(--divider);
   }
-  .meta-label { color: var(--text-dim); font-weight: 500; }
-  .meta-val { color: var(--text-primary); font-weight: 600; }
-  .meta-sep { color: var(--text-dim); }
-  @media screen and (max-width: 700px) {
-    .countdown-circle .value { font-size: 64px; }
-    .answer-box { font-size: 1.5rem; padding: 14px 24px; }
-    .category-label { font-size: 0.875rem; padding: 6px 14px; }
-    .toolbar { flex-wrap: wrap; }
+
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  @media screen and (max-width: 760px) {
+    .round-line, .blindtest-main { padding-left: 16px; padding-right: 16px; }
+    .countdown-circle .value { font-size: 32px; }
+    .answer-box { font-size: 32px; }
+    .control-bar {
+      height: auto;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 16px;
+    }
   }
 </style>

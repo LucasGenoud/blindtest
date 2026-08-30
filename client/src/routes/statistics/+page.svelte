@@ -33,63 +33,65 @@
       </div>
     </div>
   {:else}
-    <div class="loading-state">Loading...</div>
+    <div class="loading-region"><div class="loading-line"></div></div>
   {/if}
 </div>
 
 <style>
-  .stats-page { padding: 28px 24px; overflow: auto; width: 100%; }
+  .stats-page { padding: 32px; overflow: auto; width: 100%; }
+
   .page-header {
-    margin-bottom: 28px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--divider);
   }
+
   h1 {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 32px;
+    font-weight: 800;
     color: var(--text-primary);
     letter-spacing: -0.02em;
   }
+
   .metrics-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 24px;
   }
+
+  /* Grouped by alignment and space, not by a box. */
   .metric-cell {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-    padding: 28px 24px;
-    transition: box-shadow 0.2s, transform 0.2s;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
   }
-  .metric-cell:hover {
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-1px);
-  }
+
   .metric-label {
-    font-size: 0.75rem;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--text-dim);
-    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
+
   .metric-value {
-    font-family: var(--mono);
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 64px;
+    font-weight: 800;
     color: var(--text-primary);
     letter-spacing: -0.03em;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
   }
+
+  /* One accent per screen. */
   .metric-value.highlight { color: var(--accent); }
-  .loading-state {
-    font-size: 0.875rem;
-    color: var(--text-dim);
-    padding: 48px 0;
-    text-align: center;
-  }
-  @media (max-width: 700px) {
-    .metrics-grid { grid-template-columns: 1fr; }
+
+  .loading-region { position: relative; height: 2px; }
+
+  @media (max-width: 760px) {
+    .metrics-grid { grid-template-columns: 1fr; gap: 32px; }
+    .metric-value { font-size: 32px; }
   }
 </style>

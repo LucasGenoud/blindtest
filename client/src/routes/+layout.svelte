@@ -3,7 +3,6 @@
   import Topbar from '$lib/components/Topbar.svelte';
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
-  import { theme } from '$lib/stores/themeStore.js';
   import { connectWebSocket } from '$lib/websocket.js';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
@@ -23,15 +22,6 @@
     }
     if (prevPath === '') {
       prevPath = current;
-    }
-  });
-
-  // Apply theme on mount and whenever it changes
-  $effect(() => {
-    if ($theme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
     }
   });
 
@@ -59,7 +49,9 @@
 </script>
 
 <div id="app">
-  <Topbar />
+  {#if !$page.url.pathname.startsWith('/play')}
+    <Topbar />
+  {/if}
   <div class="relative flex flex-1 overflow-hidden bg-bg {entering ? 'page-enter' : ''}">
     {@render children()}
   </div>

@@ -3,7 +3,6 @@
   import { fade } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
   import { token, userPermission } from '$lib/stores/userStore.js';
-  import { Trash2 } from 'lucide-svelte';
 
   let users = $state([]);
 
@@ -56,7 +55,7 @@
           <td class="mono">{new Date(u.registerDate).toLocaleDateString()}</td>
           <td>
             {#if !u.deleted}
-              <button class="btn-danger sm" onclick={() => deleteUser(u._id)}><Trash2 size={13} stroke-width={1.8} /></button>
+              <button class="btn-danger sm" onclick={() => deleteUser(u._id)}>Delete</button>
             {:else}
               <span class="deleted-label">Deleted</span>
             {/if}
@@ -68,55 +67,74 @@
 </div>
 
 <style>
-  .manage-page { padding: 28px 24px; overflow: auto; width: 100%; }
+  .manage-page { padding: 32px; overflow: auto; width: 100%; }
+
   .page-header {
     margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--divider);
   }
+
   h1 {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 32px;
+    font-weight: 800;
     color: var(--text-primary);
     letter-spacing: -0.02em;
   }
-  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-card); }
+
+  /* A ruled list, not a filled panel: no fill, no border, no shadow. */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+    border-radius: 0;
+    border: 0;
+  }
+
   th {
     text-align: left;
-    padding: 12px 16px;
-    font-size: 0.6875rem;
+    padding: 8px;
+    font-size: 11px;
     font-weight: 600;
-    color: var(--text-dim);
-    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--border);
+    background: transparent;
+    border-bottom: 2px solid var(--divider);
   }
+
   td {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.875rem;
+    padding: 8px;
+    border-bottom: 1px solid var(--divider);
+    font-size: 13px;
     color: var(--text-secondary);
   }
+
   td.mono {
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 13px;
     color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
   }
+
   .user-name {
     font-weight: 600;
     color: var(--text-primary);
   }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--surface-2); }
+
+  tr:hover td { background: rgba(245, 241, 232, 0.06); }
   tr.deleted { opacity: 0.35; }
+
   .deleted-label {
-    font-size: 0.75rem;
-    color: var(--red);
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--signal-wrong);
   }
+
   :global(.btn-danger.sm) {
-    font-size: 0.75rem;
-    padding: 5px 10px;
+    font-size: 13px;
+    padding: 4px 8px;
+    min-height: 28px;
   }
 </style>
