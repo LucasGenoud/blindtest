@@ -7,7 +7,7 @@ use s3::creds::Credentials;
 use s3::region::Region;
 use uuid::Uuid;
 use log::{info, error};
-use crate::db::DbPool;
+use crate::db::{lock_db, DbPool};
 
 pub struct ProcessingJob {
     pub db: actix_web::web::Data<DbPool>,
@@ -17,12 +17,26 @@ pub struct ProcessingJob {
     pub table: &'static str,
 }
 
-pub type ProcessingQueue = mpsc::UnboundedSender<ProcessingJob>;
+pub type ProcessingQueue = mpsc::Sender<ProcessingJob>;
+
+/// How many jobs may be waiting for the single worker. The queue used to be
+/// unbounded, so any account could pile up unlimited yt-dlp work.
+const QUEUE_CAPACITY: usize = 256;
+
+/// `video_url` is handed to yt-dlp as an argument. Anything that is not plainly an
+/// http(s) URL is refused, so a submission cannot smuggle in a yt-dlp *option*.
+/// The call site additionally passes `--` before the URL.
+pub fn is_supported_video_url(url: &str) -> bool {
+    let url = url.trim();
+    (url.starts_with("http://") || url.starts_with("https://"))
+        && url.len() > 8
+        && !url.chars().any(|c| c.is_whitespace() || c.is_control())
+}
 
 /// Spawns a single background worker that processes jobs one at a time.
 /// Returns a sender that can be cloned and shared across request handlers.
 pub fn start_queue_worker() -> ProcessingQueue {
-    let (tx, mut rx) = mpsc::unbounded_channel::<ProcessingJob>();
+    let (tx, mut rx) = mpsc::channel::<ProcessingJob>(QUEUE_CAPACITY);
     tokio::spawn(async move {
         while let Some(job) = rx.recv().await {
             process_and_upload_video(job.db, job.audio_id, job.video_url, job.start_time, job.table).await;
@@ -38,6 +52,12 @@ pub async fn process_and_upload_video(
     start_time: i64,
     table: &str, // "audios" or "suggestions"
 ) {
+    if !is_supported_video_url(&video_url) {
+        error!("Refusing to process {}: unsupported video url", audio_id);
+        set_processing_status(&db, &audio_id, table, "error");
+        return;
+    }
+
     let s3_endpoint = env::var("S3_ENDPOINT").unwrap_or_else(|_| "http://rustfs:9000".to_string());
     let s3_access_key = env::var("S3_ACCESS_KEY").unwrap_or_else(|_| "rustfsadmin".to_string());
     let s3_secret_key = env::var("S3_SECRET_KEY").unwrap_or_else(|_| "rustfsadmin".to_string());
@@ -49,17 +69,31 @@ pub async fn process_and_upload_video(
         endpoint: s3_endpoint.clone(),
     };
     
-    let credentials = Credentials::new(
+    // A panic here would kill the single queue worker for the lifetime of the
+    // process, silently leaving every later submission stuck in 'processing'.
+    let credentials = match Credentials::new(
         Some(&s3_access_key),
         Some(&s3_secret_key),
         None,
         None,
         None,
-    ).unwrap();
+    ) {
+        Ok(c) => c,
+        Err(e) => {
+            error!("Invalid S3 credentials, cannot process {}: {:?}", audio_id, e);
+            set_processing_status(&db, &audio_id, table, "error");
+            return;
+        }
+    };
 
-    let bucket = Bucket::new(&s3_bucket_name, region.clone(), credentials.clone())
-        .unwrap()
-        .with_path_style();
+    let bucket = match Bucket::new(&s3_bucket_name, region.clone(), credentials.clone()) {
+        Ok(b) => b.with_path_style(),
+        Err(e) => {
+            error!("Could not build S3 bucket, cannot process {}: {:?}", audio_id, e);
+            set_processing_status(&db, &audio_id, table, "error");
+            return;
+        }
+    };
 
     // Create bucket if it doesn't exist
     let _ = Bucket::create_with_path_style(
@@ -91,6 +125,8 @@ pub async fn process_and_upload_video(
         .arg("--no-playlist")
         .arg("-o")
         .arg(&download_path)
+        // Everything after `--` is a positional argument, never an option.
+        .arg("--")
         .arg(&video_url)
         .status()
         .await;
@@ -173,13 +209,47 @@ pub async fn process_and_upload_video(
 }
 
 fn set_processing_status(db: &actix_web::web::Data<DbPool>, id: &str, table: &str, status: &str) {
-    let db = db.lock().unwrap();
+    let db = lock_db(db);
     let query = format!("UPDATE {} SET processing_status = ?1 WHERE id = ?2", table);
     let _ = db.execute(&query, rusqlite::params![status, id]);
 }
 
 fn update_db_success(db: &actix_web::web::Data<DbPool>, id: &str, table: &str, s3_key: &str) {
-    let db = db.lock().unwrap();
+    let db = lock_db(db);
     let query = format!("UPDATE {} SET processing_status = 'ready', s3_object_key = ?1 WHERE id = ?2", table);
     let _ = db.execute(&query, rusqlite::params![s3_key, id]);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_supported_video_url;
+
+    #[test]
+    fn accepts_ordinary_video_links() {
+        assert!(is_supported_video_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
+        assert!(is_supported_video_url("http://example.com/clip.mp4"));
+        assert!(is_supported_video_url("  https://youtu.be/abc  "));
+    }
+
+    #[test]
+    fn rejects_anything_yt_dlp_could_read_as_an_option() {
+        assert!(!is_supported_video_url("--exec=touch /tmp/pwned"));
+        assert!(!is_supported_video_url("-o/app/secret/private.pem"));
+        assert!(!is_supported_video_url("--config-locations=/tmp/evil"));
+    }
+
+    #[test]
+    fn rejects_non_http_schemes_and_bare_paths() {
+        assert!(!is_supported_video_url("file:///app/secret/private.pem"));
+        assert!(!is_supported_video_url("/app/cookies.txt"));
+        assert!(!is_supported_video_url("ftp://example.com/x.mp4"));
+        assert!(!is_supported_video_url(""));
+        assert!(!is_supported_video_url("https://"));
+    }
+
+    #[test]
+    fn rejects_embedded_whitespace_and_control_characters() {
+        assert!(!is_supported_video_url("https://example.com/a b"));
+        assert!(!is_supported_video_url("https://example.com/a\nb"));
+    }
 }

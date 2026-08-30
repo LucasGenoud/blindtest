@@ -21,8 +21,15 @@
   let audioFlagged = $state(false);
   let reportMessage = $state('');
   let customBlindtest = $state(null);
+  let currentAnswer = $state('');
+  let loadFailures = $state(0);
+  let loadError = $state('');
   let timer;
   let player;
+
+  // Stop chasing audios once the server has failed this many times in a row, instead
+  // of retrying forever past the end of the game.
+  const MAX_CONSECUTIVE_FAILURES = 5;
 
   // Initialize game
   onMount(() => {
@@ -37,7 +44,15 @@
 
   async function initGame() {
     if (blindtestId) {
-      const res = await fetch(`${getApi()}/getcustomblindtest/${blindtestId}`);
+      // Private blindtests are owner-only now, so the token has to travel with this.
+      const res = await fetch(`${getApi()}/getcustomblindtest/${blindtestId}`, {
+        headers: $token ? { Authorization: $token } : {},
+      });
+      if (!res.ok) {
+        loadError = 'This blindtest could not be loaded.';
+        videoBuffering = false;
+        return;
+      }
       customBlindtest = await res.json();
       totalAudios = customBlindtest.blindtestList.length;
       if (randomOrder) shuffleArray(customBlindtest.blindtestList);
@@ -81,14 +96,21 @@
     }
     const qs = new URLSearchParams(params).toString();
     try {
-      const res = await fetch(`${getApi()}/getnextaudio?${qs}`);
-      if (!res.ok) { $currentAudioNumber++; setTimeout(playAudio, 2000); return; }
+      // The token identifies who is playing; the server no longer trusts a userId
+      // sent in the query string.
+      const res = await fetch(`${getApi()}/getnextaudio?${qs}`, {
+        headers: $token ? { Authorization: $token } : {},
+      });
+      if (!res.ok) { failedToLoad(); return; }
       const data = await res.json();
 
       videoBuffering = true;
+      loadFailures = 0;
+      loadError = '';
       $currentAudioNumber++;
       audioFlagged = false;
       $showAnswer = false;
+      currentAnswer = '';
 
       videoId = data.videoData._id;
       $currentAudioData = data.videoData;
@@ -98,10 +120,47 @@
       preciseCountDown = $timeToGuess;
 
     } catch (e) {
-      $currentAudioNumber++;
-      setTimeout(playAudio, 2000);
+      failedToLoad();
     }
   }
+
+  /// Skip to the next audio after a failure, but give up rather than looping forever
+  /// when the server itself is unavailable.
+  function failedToLoad() {
+    stopTimer();
+    loadFailures++;
+    $currentAudioNumber++;
+
+    if (loadFailures >= MAX_CONSECUTIVE_FAILURES) {
+      videoBuffering = false;
+      loadError = 'Could not reach the server. The blindtest has been stopped.';
+      return;
+    }
+    if ($currentAudioNumber >= totalAudios) {
+      stopBlindtest();
+      return;
+    }
+    videoBuffering = true;
+    setTimeout(playAudio, 2000);
+  }
+
+  /// The answer is not part of the audio payload — it would be readable in the
+  /// network tab before anyone had guessed — so it is fetched at reveal time.
+  async function fetchAnswer(id) {
+    try {
+      const res = await fetch(`${getApi()}/getaudioanswer?audioId=${encodeURIComponent(id)}`);
+      if (res.ok && videoId === id) {
+        const data = await res.json();
+        currentAnswer = data.answer ?? '';
+      }
+    } catch {
+      // Leave the answer blank rather than breaking the reveal.
+    }
+  }
+
+  $effect(() => {
+    if ($showAnswer && videoId && !currentAnswer) fetchAnswer(videoId);
+  });
 
   $effect(() => {
     if (videoId && player) loadVideo();
@@ -124,15 +183,13 @@
     };
 
     player.onerror = () => {
-      videoBuffering = false;
       if ($token) {
-        reportMessage = 'Automatic report for broken audio';
+        // Recorded for contributors to review, but marked automatic: an automatic
+        // flag no longer removes the audio from everyone else's rotation, so a bad
+        // stretch of server trouble cannot quietly empty the pool.
         flagAudio(true);
-      } else {
-        stopTimer();
-        $currentAudioNumber++;
-        setTimeout(playAudio, 1000);
       }
+      failedToLoad();
     };
   }
 
@@ -188,14 +245,22 @@
 
   async function flagAudio(auto = false) {
     audioFlagged = true;
-    await fetch(`${getApi()}/flagaudio`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify({ audio: $currentAudioData, reportMessage }),
-    });
+    const message = auto ? 'Automatic report for broken audio' : reportMessage;
+    try {
+      await fetch(`${getApi()}/flagaudio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: $token },
+        body: JSON.stringify({ audio: $currentAudioData, reportMessage: message, auto }),
+      });
+    } catch {
+      // A failed report should not strand the player on the current audio.
+    }
     reportMessage = '';
-    stopTimer();
-    playAudio();
+    // The automatic path is driven by failedToLoad(); only a manual flag skips here.
+    if (!auto) {
+      stopTimer();
+      playAudio();
+    }
   }
 
   function openYoutube() {
@@ -262,7 +327,11 @@
   <!-- Main area -->
   <div class="blindtest-main">
     {#if !$showAnswer}
-      {#if videoBuffering}
+      {#if loadError}
+        <div class="loading-state">
+          <div class="loading-text">{loadError}</div>
+        </div>
+      {:else if videoBuffering}
         <div class="loading-state">
           <div class="loading-text">Loading</div>
           <Loader2 size={48} class="loading-spin text-accent" stroke-width={1.5} />
@@ -281,7 +350,7 @@
         </div>
       {/if}
     {:else}
-      <div class="answer-box answer-enter">{$currentAudioData?.answer}</div>
+      <div class="answer-box answer-enter">{currentAnswer}</div>
     {/if}
 
     <!-- Native Video player (always rendered, visibility toggled) -->

@@ -1,6 +1,7 @@
 use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Deserialize;
-use crate::db::DbPool;
+use crate::db::{lock_db, DbPool};
+use crate::db_try;
 use crate::middleware::{AuthState, extract_claims, unauthorized, forbidden};
 
 #[derive(Deserialize)]
@@ -32,7 +33,7 @@ pub async fn get_user(
         None => return unauthorized(),
     };
 
-    let db = db.lock().unwrap();
+    let db = lock_db(&db);
     let result = db.query_row(
         "SELECT id, email, name, role, clear_mode, hide_carousel, email_confirmed, register_date FROM users WHERE id = ?1 AND deleted = 0",
         [&claims.sub],
@@ -66,12 +67,12 @@ pub async fn get_users(
         _ => return unauthorized(),
     };
 
-    let db = db.lock().unwrap();
-    let mut stmt = db.prepare(
+    let db = lock_db(&db);
+    let mut stmt = db_try!(db.prepare(
         "SELECT id, email, name, role, email_confirmed, register_date, deleted FROM users ORDER BY register_date DESC"
-    ).unwrap();
+    ));
 
-    let users: Vec<serde_json::Value> = stmt.query_map([], |row| {
+    let users: Vec<serde_json::Value> = db_try!(stmt.query_map([], |row| {
         Ok(serde_json::json!({
             "_id": row.get::<_, String>(0)?,
             "email": row.get::<_, String>(1)?,
@@ -81,7 +82,7 @@ pub async fn get_users(
             "registerDate": row.get::<_, String>(5)?,
             "deleted": row.get::<_, bool>(6)?,
         }))
-    }).unwrap().filter_map(|r| r.ok()).collect();
+    })).filter_map(|r| r.ok()).collect();
 
     HttpResponse::Ok().json(users)
 }
@@ -89,17 +90,17 @@ pub async fn get_users(
 pub async fn get_contributor_users(
     db: web::Data<DbPool>,
 ) -> HttpResponse {
-    let db = db.lock().unwrap();
-    let mut stmt = db.prepare(
+    let db = lock_db(&db);
+    let mut stmt = db_try!(db.prepare(
         "SELECT id, name FROM users WHERE (role = 'contributor' OR role = 'administrator') AND deleted = 0 ORDER BY name"
-    ).unwrap();
+    ));
 
-    let users: Vec<serde_json::Value> = stmt.query_map([], |row| {
+    let users: Vec<serde_json::Value> = db_try!(stmt.query_map([], |row| {
         Ok(serde_json::json!({
             "_id": row.get::<_, String>(0)?,
             "name": row.get::<_, String>(1)?,
         }))
-    }).unwrap().filter_map(|r| r.ok()).collect();
+    })).filter_map(|r| r.ok()).collect();
 
     HttpResponse::Ok().json(users)
 }
@@ -115,7 +116,7 @@ pub async fn update_profile(
         None => return unauthorized(),
     };
 
-    let db = db.lock().unwrap();
+    let db = lock_db(&db);
     if let Some(ref name) = body.name {
         let _ = db.execute("UPDATE users SET name = ?1 WHERE id = ?2", rusqlite::params![name, claims.sub]);
     }
@@ -140,8 +141,12 @@ pub async fn update_user(
         _ => return forbidden(),
     };
 
-    let db = db.lock().unwrap();
+    let db = lock_db(&db);
     if let Some(ref role) = body.role {
+        // Anything else silently creates a role that matches no permission check.
+        if !matches!(role.as_str(), "user" | "contributor" | "administrator") {
+            return HttpResponse::BadRequest().json("Unknown role");
+        }
         let _ = db.execute("UPDATE users SET role = ?1 WHERE id = ?2", rusqlite::params![role, body.id]);
     }
     if let Some(deleted) = body.deleted {
@@ -162,7 +167,7 @@ pub async fn delete_user(
         _ => return forbidden(),
     };
 
-    let db = db.lock().unwrap();
+    let db = lock_db(&db);
     let _ = db.execute("UPDATE users SET deleted = 1 WHERE id = ?1", [&query.id]);
     HttpResponse::Ok().json("User deleted")
 }
@@ -177,7 +182,7 @@ pub async fn get_user_profile(
         None => return unauthorized(),
     };
 
-    let db = db.lock().unwrap();
+    let db = lock_db(&db);
     let result = db.query_row(
         "SELECT id, name, clear_mode, hide_carousel FROM users WHERE id = ?1",
         [&claims.sub],

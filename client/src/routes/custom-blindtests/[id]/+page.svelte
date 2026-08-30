@@ -17,7 +17,7 @@
   onMount(async () => {
     const id = $page.params.id;
     const [btRes, audiosRes] = await Promise.all([
-      fetch(`${getApi()}/getcustomblindtest/${id}`),
+      fetch(`${getApi()}/getcustomblindtest/${id}`, { headers: { Authorization: $token } }),
       fetch(`${getApi()}/getaudiosnames`, { headers: { Authorization: $token } }),
     ]);
     if (btRes.ok) blindtest = await btRes.json();

@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
   import { token, user } from '$lib/stores/userStore.js';
@@ -56,17 +56,16 @@
       }
     } catch {}
 
-    if ($websocket) {
-      $websocket.addEventListener('message', onWsMessage);
-    }
-
     centerCanvas();
   });
 
-  onDestroy(() => {
-    if ($websocket) {
-      $websocket.removeEventListener('message', onWsMessage);
-    }
+  // Re-attached whenever the socket is replaced, so live updates survive a reconnect
+  // and still arrive if the socket opens after this page has mounted.
+  $effect(() => {
+    const socket = $websocket;
+    if (!socket) return;
+    socket.addEventListener('message', onWsMessage);
+    return () => socket.removeEventListener('message', onWsMessage);
   });
 
   function centerCanvas() {

@@ -1,16 +1,17 @@
 use actix_web::{web, HttpResponse};
-use crate::db::DbPool;
+use crate::db::{lock_db, DbPool};
+use crate::db_try;
 
 pub async fn get_suggestions(
     db: web::Data<DbPool>,
 ) -> HttpResponse {
-    let db = db.lock().unwrap();
-    let mut stmt = db.prepare(
+    let db = lock_db(&db);
+    let mut stmt = db_try!(db.prepare(
         "SELECT s.id, s.category, s.answer, s.video_url, s.start_time, s.superflus, s.submitted_by, s.added_date, u.name, s.processing_status
          FROM suggestions s LEFT JOIN users u ON s.submitted_by = u.id ORDER BY s.added_date DESC"
-    ).unwrap();
+    ));
 
-    let items: Vec<serde_json::Value> = stmt.query_map([], |row| {
+    let items: Vec<serde_json::Value> = db_try!(stmt.query_map([], |row| {
         Ok(serde_json::json!({
             "_id": row.get::<_, String>(0)?,
             "category": row.get::<_, String>(1)?,
@@ -23,7 +24,7 @@ pub async fn get_suggestions(
             "submittedByUsername": row.get::<_, String>(8).ok(),
             "processingStatus": row.get::<_, String>(9).unwrap_or_else(|_| "ready".to_string()),
         }))
-    }).unwrap().filter_map(|r| r.ok()).collect();
+    })).filter_map(|r| r.ok()).collect();
 
     HttpResponse::Ok().json(items)
 }

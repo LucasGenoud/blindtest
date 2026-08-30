@@ -3,9 +3,8 @@
   import { fade, fly } from 'svelte/transition';
   import { getApi } from '$lib/api.js';
   import { token, userPermission } from '$lib/stores/userStore.js';
-  import { goto } from '$app/navigation';
   import { categoryListValueLabel } from '$lib/misc.js';
-  import { Play, ExternalLink, Pencil, Trash2, X, Search, Flag, ChevronDown, ChevronUp, Download } from 'lucide-svelte';
+  import { Play, ExternalLink, Pencil, Trash2, X, Search, Flag, ChevronDown, ChevronUp, Download, RefreshCw } from 'lucide-svelte';
 
   let audios = $state([]);
   let search = $state('');
@@ -28,7 +27,6 @@
   let sortDir = $state('desc'); // 'asc' | 'desc'
 
   onMount(async () => {
-    if ($userPermission < 2) { goto('/'); return; }
     await loadAudios();
   });
 
@@ -125,6 +123,16 @@
     if (!confirm('Delete this audio?')) return;
     await fetch(`${getApi()}/deleteaudio?id=${id}`, {
       method: 'DELETE',
+      headers: { Authorization: $token },
+    });
+    await loadAudios();
+  }
+
+  /// Requeue an audio whose processing failed; previously the only way to retry was
+  /// to edit the video URL into something else and back again.
+  async function reprocessAudio(audioId) {
+    await fetch(`${getApi()}/reprocessaudio?audioId=${encodeURIComponent(audioId)}`, {
+      method: 'POST',
       headers: { Authorization: $token },
     });
     await loadAudios();
@@ -326,6 +334,9 @@
                 <div class="action-group">
                   {#if audio.processingStatus === 'ready' && audio.s3ObjectKey}
                     <button class="btn-xs btn-play" title="Preview audio" onclick={() => openPreview(audio)}><Play size={11} stroke-width={1.8} /></button>
+                  {/if}
+                  {#if audio.processingStatus === 'error'}
+                    <button class="btn-xs btn-edit" title="Retry processing" onclick={() => reprocessAudio(audio._id)}><RefreshCw size={11} stroke-width={1.8} /></button>
                   {/if}
                   <a href={audio.videoUrl} target="_blank" class="btn-xs btn-link" title="Open YouTube"><ExternalLink size={11} stroke-width={1.8} /></a>
                   <button class="btn-xs btn-edit" title="Edit" onclick={() => editAudio = {...audio}}><Pencil size={11} stroke-width={1.8} /></button>

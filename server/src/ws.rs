@@ -33,12 +33,12 @@ impl WsBroadcaster {
     }
 
     pub fn add_client(&self, id: &str, username: &str) {
-        let mut clients = self.clients.lock().unwrap();
+        let mut clients = self.clients.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         clients.insert(id.to_string(), ClientInfo { username: username.to_string() });
     }
 
     pub fn remove_client(&self, id: &str) {
-        let mut clients = self.clients.lock().unwrap();
+        let mut clients = self.clients.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         clients.remove(id);
         // Broadcast removal
         let msg = serde_json::json!({

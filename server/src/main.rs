@@ -22,6 +22,7 @@ async fn main() -> std::io::Result<()> {
 
     let auth_state = middleware::AuthState::new();
     let broadcaster = ws::WsBroadcaster::new();
+    let canvas_cache = routes::canvas::CanvasCache::new();
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "80".to_string());
     let bind_addr = format!("0.0.0.0:{}", port);
@@ -47,12 +48,11 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(auth_state.clone()))
             .app_data(web::Data::new(broadcaster.clone()))
             .app_data(web::Data::new(processing_queue.clone()))
+            .app_data(web::Data::new(canvas_cache.clone()))
             // Auth
             .route("/signin", web::post().to(routes::auth::signin))
             .route("/signup", web::post().to(routes::auth::signup))
             .route("/confirmemail", web::post().to(routes::auth::confirm_email))
-            .route("/resetpassword", web::post().to(routes::auth::reset_password))
-            .route("/changepassword", web::post().to(routes::auth::change_password))
             // Users
             .route("/getuser", web::get().to(routes::users::get_user))
             .route("/getusers", web::get().to(routes::users::get_users))
@@ -63,10 +63,12 @@ async fn main() -> std::io::Result<()> {
             .route("/getUserProfile", web::post().to(routes::users::get_user_profile))
             // Audios
             .route("/getnextaudio", web::get().to(routes::audios::get_next_audio))
+            .route("/getaudioanswer", web::get().to(routes::audios::get_audio_answer))
             .route("/newaudio", web::post().to(routes::audios::new_audio))
             .route("/suggestaudio", web::post().to(routes::audios::suggest_audio))
             .route("/getallaudios", web::get().to(routes::audios::get_all_audios))
             .route("/updateaudio", web::post().to(routes::audios::update_audio))
+            .route("/reprocessaudio", web::post().to(routes::audios::reprocess_audio))
             .route("/flagaudio", web::post().to(routes::audios::flag_audio))
             .route("/resetflag", web::post().to(routes::audios::reset_flag))
             .route("/deleteaudio", web::delete().to(routes::audios::delete_audio))
