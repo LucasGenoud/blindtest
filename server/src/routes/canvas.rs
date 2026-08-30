@@ -1,7 +1,7 @@
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use crate::db::{lock_db, DbPool};
-use crate::middleware::{AuthState, extract_claims, unauthorized};
+use crate::middleware::{Authed};
 use crate::ws::WsBroadcaster;
 use std::sync::{Arc, Mutex};
 
@@ -171,17 +171,13 @@ fn normalize_hex(hex: &str) -> Option<String> {
 }
 
 pub async fn update_pixel(
-    req: HttpRequest,
+    user: Authed,
     body: web::Json<UpdatePixelBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
     broadcaster: web::Data<Arc<WsBroadcaster>>,
     cache: web::Data<Arc<CanvasCache>>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     let x = body.pixel.selected_pixel.x;
     let y = body.pixel.selected_pixel.y;

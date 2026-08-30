@@ -2,7 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use crate::db::{lock_db, DbPool};
 use crate::db_try;
-use crate::middleware::{AuthState, extract_claims, unauthorized, forbidden};
+use crate::middleware::{Administrator, Authed, Contributor, AuthState, extract_claims};
 use crate::video_processor::{is_supported_video_url, ProcessingJob, ProcessingQueue};
 
 /// Manual flags hide an audio from every player, so they are rate limited per account.
@@ -282,16 +282,12 @@ pub async fn get_audio_answer(
 }
 
 pub async fn new_audio(
-    req: HttpRequest,
+    user: Contributor,
     body: web::Json<NewAudioBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
     queue: web::Data<ProcessingQueue>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "contributor" || c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
+    let claims = user.0;
 
     if !is_supported_video_url(&body.video_url) {
         return bad_video_url();
@@ -347,16 +343,12 @@ pub async fn new_audio(
 }
 
 pub async fn suggest_audio(
-    req: HttpRequest,
+    user: Authed,
     body: web::Json<NewAudioBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
     queue: web::Data<ProcessingQueue>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     if !is_supported_video_url(&body.video_url) {
         return bad_video_url();
@@ -403,15 +395,9 @@ pub async fn suggest_audio(
 }
 
 pub async fn get_all_audios(
-    req: HttpRequest,
+    _user: Contributor,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "contributor" || c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
-
     let db = lock_db(&db);
     let mut stmt = db_try!(db.prepare(
         "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, u.name, a.processing_status, a.s3_object_key
@@ -475,16 +461,12 @@ pub async fn get_all_audios(
 }
 
 pub async fn update_audio(
-    req: HttpRequest,
+    user: Contributor,
     body: web::Json<UpdateAudioBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
     queue: web::Data<ProcessingQueue>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "contributor" || c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
+    let claims = user.0;
 
     // Fetch current video_url and start_time to detect changes
     let (current_url, current_start_time): (String, i64) = {
@@ -557,17 +539,11 @@ pub async fn update_audio(
 /// Requeue an audio whose processing failed. Without this the only way to retry was
 /// to edit the video URL into something different and back again.
 pub async fn reprocess_audio(
-    req: HttpRequest,
+    _user: Contributor,
     query: web::Query<AudioIdQuery>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
     queue: web::Data<ProcessingQueue>,
 ) -> HttpResponse {
-    match extract_claims(&req, &auth) {
-        Some(c) if c.role == "contributor" || c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
-
     let (video_url, start_time): (String, i64) = {
         let db_locked = lock_db(&db);
         match db_locked.query_row(
@@ -611,15 +587,11 @@ pub async fn reprocess_audio(
 }
 
 pub async fn flag_audio(
-    req: HttpRequest,
+    user: Authed,
     body: web::Json<FlagAudioBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     let audio_id = body.audio.get("_id").and_then(|v| v.as_str()).unwrap_or("");
     if audio_id.is_empty() {
@@ -669,32 +641,20 @@ pub async fn flag_audio(
 }
 
 pub async fn reset_flag(
-    req: HttpRequest,
+    _user: Contributor,
     body: web::Json<ResetFlagBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "contributor" || c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
-
     let db = lock_db(&db);
     let _ = db.execute("DELETE FROM flagged_audios WHERE audio_id = ?1", [&body.audio_id]);
     HttpResponse::Ok().json("Flags reset")
 }
 
 pub async fn delete_audio(
-    req: HttpRequest,
+    _user: Administrator,
     query: web::Query<DeleteAudioQuery>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
-
     let db = lock_db(&db);
     let _ = db.execute("DELETE FROM audios WHERE id = ?1", [&query.id]);
     HttpResponse::Ok().json("Audio deleted")
@@ -724,15 +684,9 @@ pub async fn test_answer(
 }
 
 pub async fn backup_audios(
-    req: HttpRequest,
+    _user: Administrator,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
-
     let db = lock_db(&db);
 
     // Collect all audios as JSON

@@ -2,7 +2,7 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use serde::Deserialize;
 use crate::db::{lock_db, DbPool};
 use crate::db_try;
-use crate::middleware::{AuthState, extract_claims, unauthorized};
+use crate::middleware::{Authed, AuthState, extract_claims};
 
 #[derive(Deserialize)]
 pub struct CreateBody {
@@ -18,37 +18,28 @@ pub struct UpdateBody {
 }
 
 pub async fn create(
-    req: HttpRequest,
+    user: Authed,
     body: web::Json<CreateBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let _claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
-
+    let owner = user.0;
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
     let db = lock_db(&db);
 
     let _ = db.execute(
         "INSERT INTO custom_blindtests (id, name, public, owner_id, added_date, blindtest_list) VALUES (?1, ?2, 0, ?3, ?4, '[]')",
-        rusqlite::params![id, body.name, _claims.sub, now],
+        rusqlite::params![id, body.name, owner.sub, now],
     );
 
     HttpResponse::Ok().json(serde_json::json!({"_id": id}))
 }
 
 pub async fn get_user_blindtests(
-    req: HttpRequest,
+    user: Authed,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     let db = lock_db(&db);
     let mut stmt = db_try!(db.prepare(
@@ -140,16 +131,12 @@ pub async fn get_one(
 }
 
 pub async fn update(
-    req: HttpRequest,
+    user: Authed,
     path: web::Path<String>,
     body: web::Json<UpdateBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     let id = path.into_inner();
     let db = lock_db(&db);
@@ -172,15 +159,11 @@ pub async fn update(
 }
 
 pub async fn delete(
-    req: HttpRequest,
+    user: Authed,
     path: web::Path<String>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     let id = path.into_inner();
     let db = lock_db(&db);
@@ -191,15 +174,9 @@ pub async fn delete(
 }
 
 pub async fn get_audio_names(
-    req: HttpRequest,
+    _user: Authed,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let _claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
-
     let db = lock_db(&db);
     let mut stmt = db_try!(db.prepare("SELECT id, answer, category FROM audios ORDER BY answer"));
 

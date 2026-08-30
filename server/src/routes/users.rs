@@ -1,8 +1,8 @@
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use crate::db::{lock_db, DbPool};
 use crate::db_try;
-use crate::middleware::{AuthState, extract_claims, unauthorized, forbidden};
+use crate::middleware::{Administrator, Authed, Contributor};
 
 #[derive(Deserialize)]
 pub struct UpdateProfileBody {
@@ -24,14 +24,10 @@ pub struct DeleteUserQuery {
 }
 
 pub async fn get_user(
-    req: HttpRequest,
+    user: Authed,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     let db = lock_db(&db);
     let result = db.query_row(
@@ -58,15 +54,9 @@ pub async fn get_user(
 }
 
 pub async fn get_users(
-    req: HttpRequest,
+    _user: Contributor,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "contributor" || c.role == "administrator" => c,
-        _ => return unauthorized(),
-    };
-
     let db = lock_db(&db);
     let mut stmt = db_try!(db.prepare(
         "SELECT id, email, name, role, email_confirmed, register_date, deleted FROM users ORDER BY register_date DESC"
@@ -106,15 +96,11 @@ pub async fn get_contributor_users(
 }
 
 pub async fn update_profile(
-    req: HttpRequest,
+    user: Authed,
     body: web::Json<UpdateProfileBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     let db = lock_db(&db);
     if let Some(ref name) = body.name {
@@ -131,16 +117,10 @@ pub async fn update_profile(
 }
 
 pub async fn update_user(
-    req: HttpRequest,
+    _user: Administrator,
     body: web::Json<UpdateUserBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let _claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
-
     let db = lock_db(&db);
     if let Some(ref role) = body.role {
         // Anything else silently creates a role that matches no permission check.
@@ -157,30 +137,20 @@ pub async fn update_user(
 }
 
 pub async fn delete_user(
-    req: HttpRequest,
+    _user: Administrator,
     query: web::Query<DeleteUserQuery>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let _claims = match extract_claims(&req, &auth) {
-        Some(c) if c.role == "administrator" => c,
-        _ => return forbidden(),
-    };
-
     let db = lock_db(&db);
     let _ = db.execute("UPDATE users SET deleted = 1 WHERE id = ?1", [&query.id]);
     HttpResponse::Ok().json("User deleted")
 }
 
 pub async fn get_user_profile(
-    req: HttpRequest,
+    user: Authed,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
-    let claims = match extract_claims(&req, &auth) {
-        Some(c) => c,
-        None => return unauthorized(),
-    };
+    let claims = user.0;
 
     let db = lock_db(&db);
     let result = db.query_row(
