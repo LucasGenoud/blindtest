@@ -71,10 +71,10 @@
     <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Number of guesses</div>
     <input type="number" min="10" bind:value={$numberOfAudios} style="width:120px" />
 
-    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Time to guess: <span class="ml-1 font-bold text-accent">{$timeToGuess}s</span></div>
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Time to guess: <span class="ml-1 font-bold text-accent-ink">{$timeToGuess}s</span></div>
     <input type="range" min="5" max="30" bind:value={$timeToGuess} />
 
-    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Time with answer: <span class="ml-1 font-bold text-accent">{$timeWithAnswer}s</span></div>
+    <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Time with answer: <span class="ml-1 font-bold text-accent-ink">{$timeWithAnswer}s</span></div>
     <input type="range" min="5" max="30" bind:value={$timeWithAnswer} />
 
     <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">
@@ -251,7 +251,7 @@
   }
 
   .contributor-option.selected {
-    color: var(--accent);
+    color: var(--accent-ink);
   }
 
   .contributor-option input[type="checkbox"] {

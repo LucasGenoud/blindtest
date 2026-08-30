@@ -1,17 +1,22 @@
 <script>
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { volume } from '$lib/stores/gameStore.js';
+  import { theme } from '$lib/stores/themeStore.js';
   import { stringToColor } from '$lib/misc.js';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import LoginPopup from '$lib/components/login/LoginPopup.svelte';
-  import { Volume2, LogOut } from 'lucide-svelte';
+  import { Volume2, LogOut, Sun, Moon } from 'lucide-svelte';
 
   let showLogin = $state(false);
   let showProfile = $state(false);
 
   function changeVolume(e) {
     $volume = parseInt(e.target.value);
+  }
+
+  function toggleTheme() {
+    $theme = $theme === 'light' ? 'dark' : 'light';
   }
 
   function logOut() {
@@ -68,6 +73,19 @@
       />
     </div>
 
+    <button
+      class="btn-circle"
+      onclick={toggleTheme}
+      title={$theme === 'light' ? 'Switch to dark' : 'Switch to light'}
+      aria-label={$theme === 'light' ? 'Switch to dark' : 'Switch to light'}
+    >
+      {#if $theme === 'light'}
+        <Moon size={16} stroke-width={2} />
+      {:else}
+        <Sun size={16} stroke-width={2} />
+      {/if}
+    </button>
+
     {#if !$token}
       <button class="btn-primary" onclick={() => showLogin = true}>
         Sign in
@@ -76,7 +94,7 @@
       <div class="relative">
         <!-- The avatar is one of the two circular exceptions. -->
         <button
-          class="flex h-9 w-9 items-center justify-center rounded-full p-0 text-sm font-extrabold text-bg"
+          class="flex h-9 w-9 items-center justify-center rounded-full p-0 text-sm font-extrabold text-on-accent"
           style="background:{stringToColor($user.name)}"
           onclick={() => showProfile = !showProfile}
           aria-label="Account menu"

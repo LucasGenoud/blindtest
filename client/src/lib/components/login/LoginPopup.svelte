@@ -118,7 +118,7 @@
   .tab:hover { color: var(--text-primary); }
 
   .tab.active {
-    color: var(--accent);
+    color: var(--accent-ink);
     box-shadow: inset 0 -2px 0 var(--accent);
   }
 

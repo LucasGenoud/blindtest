@@ -516,7 +516,7 @@ Error <strong class="tabular">{counts.error}</strong>
   }
   .stat-chip:hover { background: var(--surface-2); }
   .stat-chip.active {
-    color: var(--accent);
+    color: var(--accent-ink);
     border-bottom-color: var(--accent);
   }
   .stat-chip strong { font-weight: 700; }
@@ -643,7 +643,7 @@ Error <strong class="tabular">{counts.error}</strong>
   .page-btn:hover:not(:disabled),
   .page-size-btn:hover { color: var(--accent-ink); }
   .page-btn.active,
-  .page-size-btn.active { color: var(--accent); font-weight: 800; }
+  .page-size-btn.active { color: var(--accent-ink); font-weight: 800; }
   .page-btn:disabled { opacity: 0.3; cursor: default; }
   .page-size-select {
     margin-left: auto;
@@ -703,7 +703,7 @@ Error <strong class="tabular">{counts.error}</strong>
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  tr:hover td { background: rgba(245, 241, 232, 0.06); }
+  tr:hover td { background: var(--row-hover); }
   tr.flagged td { color: var(--text-primary); }
 
   /* ── Status ── */

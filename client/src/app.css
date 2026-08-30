@@ -43,10 +43,40 @@
   --radius-md: 0;
   --radius-lg: 0;
 
+  /* Type on an accent fill is always the dark ink, in either theme. */
+  --on-accent: #1C1A17;
+  /* Accent as large type (>=20px). Amber is only 2:1 on a light ground, so the
+     light theme swaps it for the darker ink. */
+  --accent-text: var(--accent);
+  --overlay: rgba(28, 26, 23, 0.8);
+  --row-hover: rgba(245, 241, 232, 0.06);
+
   --easing-primary: cubic-bezier(0.4, 0, 0.2, 1);
   --duration-fast: 120ms;   /* hover, focus, fill change */
   --duration-panel: 200ms;  /* panel, dialog, route change */
   --duration-reveal: 320ms; /* answer reveal, score tick */
+}
+
+[data-theme="light"] {
+  --bg: #F3F2F2;
+  --surface: #EAE9E9;
+  --surface-2: #DEDDDD;
+  --text-primary: #201E1D;
+  --text-secondary: #4F4C4A;
+  --text-dim: #6B6764;
+  --accent: #FFB020;
+  --accent-ink: #8A5200;  /* the doc's light-ground accent text */
+  --accent-hover: var(--accent-ink);
+  --divider: rgba(32, 30, 29, 0.4);
+
+  /* The dark signals are unreadable on a light ground; these are their
+     equivalents, each above 4.5:1 on #F3F2F2. */
+  --signal-correct: #0F7A43;
+  --signal-wrong: #8A5200;
+
+  --accent-text: #8A5200;
+  --overlay: rgba(32, 30, 29, 0.5);
+  --row-hover: rgba(32, 30, 29, 0.06);
 }
 
 @theme inline {
@@ -63,6 +93,8 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-accent-text: var(--accent-text);
   --color-green: var(--green);
   --color-red: var(--red);
   --color-blue: var(--blue);
@@ -108,6 +140,8 @@
     @apply h-full w-full overflow-hidden bg-bg font-sans text-base text-text-primary antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.55;
+    transition: background-color var(--duration-fast) ease-out,
+                color var(--duration-fast) ease-out;
   }
 
   #app {
@@ -194,7 +228,7 @@
   /* One per screen. */
   .btn-primary {
     background: var(--accent);
-    color: var(--bg);
+    color: var(--on-accent);
     border: 1px solid var(--accent);
   }
 
@@ -348,7 +382,7 @@
   }
 
   .toggle.active {
-    color: var(--accent);
+    color: var(--accent-ink);
     background: var(--surface-2);
   }
 
@@ -416,7 +450,7 @@
      which does nothing on a dark ground. */
   .popup-overlay {
     @apply fixed inset-0 z-[100] flex items-center justify-center;
-    background: rgba(28, 26, 23, 0.8);
+    background: var(--overlay);
   }
 
   .popup-box {

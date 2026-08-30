@@ -122,7 +122,7 @@
     color: var(--text-primary);
   }
 
-  tr:hover td { background: rgba(245, 241, 232, 0.06); }
+  tr:hover td { background: var(--row-hover); }
   tr.deleted { opacity: 0.35; }
 
   .deleted-label {

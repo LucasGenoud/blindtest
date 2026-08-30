@@ -664,7 +664,7 @@
     pointer-events: none;
     z-index: 7;
     animation: paintConfirm 600ms var(--easing-primary) forwards;
-    color: var(--accent);
+    color: var(--accent-ink);
   }
 
   .user-cursor {
@@ -688,7 +688,7 @@
     border: 1px solid var(--border);
     padding: 1px 5px;
     border-radius: 0;
-    color: var(--accent);
+    color: var(--accent-ink);
     white-space: nowrap;
     margin-top: 2px;
     opacity: 0.9;
@@ -730,7 +730,7 @@
     color: var(--text-dim);
   }
   .hud-btn.hud-btn-text.active {
-    color: var(--accent);
+    color: var(--accent-ink);
     background: var(--surface-2);
   }
   .hud-zoom {
@@ -773,7 +773,7 @@
     letter-spacing: 0.05em;
   }
   .coord-hint {
-    color: var(--accent);
+    color: var(--accent-ink);
     opacity: 0.8;
   }
 

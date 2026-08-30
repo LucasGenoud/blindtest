@@ -427,7 +427,7 @@
   .round-current {
     font-size: 20px;
     font-weight: 800;
-    color: var(--accent);
+    color: var(--accent-text);
   }
 
   .round-total {
@@ -498,7 +498,7 @@
     font-weight: 800;
     line-height: 1.1;
     letter-spacing: -0.03em;
-    color: var(--accent);
+    color: var(--accent-text);
     text-align: center;
     max-width: 1200px;
   }

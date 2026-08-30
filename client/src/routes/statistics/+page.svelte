@@ -86,7 +86,7 @@
   }
 
   /* One accent per screen. */
-  .metric-value.highlight { color: var(--accent); }
+  .metric-value.highlight { color: var(--accent-text); }
 
   .loading-region { position: relative; height: 2px; }
 

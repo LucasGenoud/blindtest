@@ -109,7 +109,7 @@
     transition: background-color var(--duration-fast) ease-out;
   }
   .bt-item:hover {
-    background: rgba(245, 241, 232, 0.06);
+    background: var(--row-hover);
   }
   .bt-info { display: flex; flex-direction: column; gap: 4px; }
   .bt-name {

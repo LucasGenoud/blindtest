@@ -3,11 +3,21 @@
   import Topbar from '$lib/components/Topbar.svelte';
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
+  import { theme } from '$lib/stores/themeStore.js';
   import { connectWebSocket } from '$lib/websocket.js';
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
 
   let { children, data } = $props();
+
+  // Dark is the ground; light is opt-in and marked on the root element.
+  $effect(() => {
+    if ($theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  });
 
   let prevPath = $state('');
   let entering = $state(false);

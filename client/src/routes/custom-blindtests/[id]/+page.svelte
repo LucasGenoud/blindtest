@@ -199,7 +199,7 @@
   .add-icon {
     margin-left: auto;
     opacity: 0;
-    color: var(--accent);
+    color: var(--accent-text);
     transition: opacity 0.15s;
     flex-shrink: 0;
   }
