@@ -1,6 +1,5 @@
 <script>
   import { onMount } from 'svelte';
-  import { fade } from 'svelte/transition';
   import { api, apiTry } from '$lib/api.js';
   import { ExternalLink } from 'lucide-svelte';
 
@@ -27,7 +26,7 @@
       <thead><tr><th>Category</th><th>Answer</th><th>URL</th><th>Submitted by</th><th>Date</th></tr></thead>
       <tbody>
         {#each suggestions as s (s._id)}
-          <tr transition:fade={{ duration: 200 }}>
+          <tr>
             <td><span class="cat-badge">{s.category}</span></td>
             <td>{s.answer}</td>
             <td><a href={s.videoUrl} target="_blank">Link <ExternalLink size={11} stroke-width={1.8} /></a></td>

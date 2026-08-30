@@ -95,7 +95,7 @@
           </div>
           <div class="pool-list">
             {#each filteredPool().slice(0, 200) as audio (audio._id)}
-              <div class="pool-item" onclick={() => addAudio(audio._id)} transition:fade={{ duration: 150 }}>
+              <div class="pool-item" onclick={() => addAudio(audio._id)}>
                 <span class="cat-dot" style="background:{audio.category === 'movies' ? 'var(--red)' : audio.category === 'animes' ? 'var(--blue)' : 'var(--green)'}"></span>
                 <span class="pool-name">{audio.answer}</span>
                 <Plus size={12} stroke-width={1.8} class="add-icon" />
@@ -111,7 +111,7 @@
           </div>
           <div class="selected-list">
             {#each blindtest.blindtestList as audioId, i (audioId + i)}
-              <div class="selected-item" transition:fade={{ duration: 150, delay: 40 }}>
+              <div class="selected-item">
                 <span class="item-num">{i + 1}</span>
                 <span class="item-name">{getAudioName(audioId)}</span>
                 <span class="item-cat">{getAudioCat(audioId)}</span>

@@ -1,6 +1,5 @@
 <script>
   import { onMount } from 'svelte';
-  import { fade } from 'svelte/transition';
   import { api, apiTry } from '$lib/api.js';
   import { userPermission } from '$lib/stores/userStore.js';
 
@@ -34,7 +33,7 @@
     <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Registered</th><th>Actions</th></tr></thead>
     <tbody>
       {#each users as u (u._id)}
-        <tr class:deleted={u.deleted} transition:fade={{ duration: 200 }}>
+        <tr class:deleted={u.deleted}>
           <td class="user-name">{u.name}</td>
           <td>{u.email}</td>
           <td>
