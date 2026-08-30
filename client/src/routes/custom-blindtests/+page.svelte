@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { getApi } from '$lib/api.js';
+  import { api, apiTry } from '$lib/api.js';
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { goto } from '$app/navigation';
   import { Plus } from 'lucide-svelte';
@@ -10,30 +10,19 @@
 
   onMount(async () => {
     if (!$token) { goto('/'); return; }
-    const res = await fetch(`${getApi()}/getcustomblindtests`, { headers: { Authorization: $token } });
-    if (res.ok) blindtests = await res.json();
+    blindtests = await apiTry(api.get('/getcustomblindtests'), []);
   });
 
   async function create() {
     const name = prompt('Enter blindtest name:');
     if (!name) return;
-    const res = await fetch(`${getApi()}/createcustomblindtest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify({ name }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      goto(`/custom-blindtests/${data._id}`);
-    }
+    const created = await apiTry(api.post('/createcustomblindtest', { name }));
+    if (created) goto(`/custom-blindtests/${created._id}`);
   }
 
   async function deleteBt(id) {
     if (!confirm('Delete this blindtest?')) return;
-    await fetch(`${getApi()}/deletecustomblindtest/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: $token },
-    });
+    await apiTry(api.del(`/deletecustomblindtest/${id}`));
     blindtests = blindtests.filter(b => b._id !== id);
   }
 </script>

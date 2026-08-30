@@ -1,8 +1,8 @@
 <script>
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
-  import { getApi } from '$lib/api.js';
-  import { token, userPermission } from '$lib/stores/userStore.js';
+  import { api, apiTry, getApi } from '$lib/api.js';
+  import { userPermission } from '$lib/stores/userStore.js';
   import { categoryListValueLabel } from '$lib/misc.js';
   import { Play, ExternalLink, Pencil, Trash2, X, Search, Flag, ChevronDown, ChevronUp, Download, RefreshCw } from 'lucide-svelte';
 
@@ -32,8 +32,7 @@
 
   async function loadAudios() {
     loading = true;
-    const res = await fetch(`${getApi()}/getallaudios`, { headers: { Authorization: $token } });
-    if (res.ok) audios = await res.json();
+    audios = await apiTry(api.get('/getallaudios'), audios);
     loading = false;
   }
 
@@ -99,57 +98,39 @@
 
   async function addAudio() {
     if (!newAudio.answer || !newAudio.videoUrl) return;
-    await fetch(`${getApi()}/newaudio`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify(newAudio),
-    });
+    await apiTry(api.post('/newaudio', newAudio));
     showAddForm = false;
     newAudio = { category: 'movies', answer: '', videoUrl: '', startTime: 0, superflus: false };
     await loadAudios();
   }
 
   async function saveEdit() {
-    await fetch(`${getApi()}/updateaudio`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify(editAudio),
-    });
+    await apiTry(api.post('/updateaudio', editAudio));
     editAudio = null;
     await loadAudios();
   }
 
   async function deleteAudio(id) {
     if (!confirm('Delete this audio?')) return;
-    await fetch(`${getApi()}/deleteaudio?id=${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: $token },
-    });
+    await apiTry(api.del(`/deleteaudio?id=${encodeURIComponent(id)}`));
     await loadAudios();
   }
 
   /// Requeue an audio whose processing failed; previously the only way to retry was
   /// to edit the video URL into something else and back again.
   async function reprocessAudio(audioId) {
-    await fetch(`${getApi()}/reprocessaudio?audioId=${encodeURIComponent(audioId)}`, {
-      method: 'POST',
-      headers: { Authorization: $token },
-    });
+    await apiTry(api.post(`/reprocessaudio?audioId=${encodeURIComponent(audioId)}`));
     await loadAudios();
   }
 
   async function resetFlag(audioId) {
-    await fetch(`${getApi()}/resetflag`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify({ audioId }),
-    });
+    await apiTry(api.post('/resetflag', { audioId }));
     await loadAudios();
   }
 
   async function downloadBackup() {
-    const res = await fetch(`${getApi()}/backupaudio`, { headers: { Authorization: $token } });
-    const blob = await res.blob();
+    const blob = await apiTry(api.get('/backupaudio', { parse: 'blob' }));
+    if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'backup.zip'; a.click();

@@ -1,8 +1,7 @@
 <script>
   import { goto } from '$app/navigation';
   import { blindtestStatus, numberOfAudios, timeToGuess, timeWithAnswer, showCategory, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers } from '$lib/stores/gameStore.js';
-  import { token } from '$lib/stores/userStore.js';
-  import { getApi } from '$lib/api.js';
+  import { api, apiTry } from '$lib/api.js';
   import { categoryListKeyLabel } from '$lib/misc.js';
   import { onMount } from 'svelte';
   import { Play } from 'lucide-svelte';
@@ -31,10 +30,7 @@
   }
 
   onMount(async () => {
-    try {
-      const res = await fetch(`${getApi()}/getcontributorusers`);
-      if (res.ok) contributorUsers = await res.json();
-    } catch {}
+    contributorUsers = await apiTry(api.get('/getcontributorusers'), []);
   });
 
   function getTotal() {

@@ -1,14 +1,13 @@
 <script>
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { getApi } from '$lib/api.js';
+  import { api, apiTry } from '$lib/api.js';
   import { ExternalLink } from 'lucide-svelte';
 
   let suggestions = $state([]);
 
   onMount(async () => {
-    const res = await fetch(`${getApi()}/getSuggestions`);
-    if (res.ok) suggestions = await res.json();
+    suggestions = await apiTry(api.get('/getSuggestions'), []);
   });
 </script>
 

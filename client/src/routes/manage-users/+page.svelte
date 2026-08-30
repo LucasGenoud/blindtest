@@ -1,22 +1,17 @@
 <script>
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { getApi } from '$lib/api.js';
-  import { token, userPermission } from '$lib/stores/userStore.js';
+  import { api, apiTry } from '$lib/api.js';
+  import { userPermission } from '$lib/stores/userStore.js';
 
   let users = $state([]);
 
   onMount(async () => {
-    const res = await fetch(`${getApi()}/getusers`, { headers: { Authorization: $token } });
-    if (res.ok) users = await res.json();
+    users = await apiTry(api.get('/getusers'), []);
   });
 
   async function changeRole(userId, newRole) {
-    await fetch(`${getApi()}/updateuser`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify({ id: userId, role: newRole }),
-    });
+    await apiTry(api.post('/updateuser', { id: userId, role: newRole }));
     const i = users.findIndex(u => u._id === userId);
     if (i >= 0) users[i].role = newRole;
     users = [...users];
@@ -24,10 +19,7 @@
 
   async function deleteUser(userId) {
     if (!confirm('Delete this user?')) return;
-    await fetch(`${getApi()}/deleteuser?id=${userId}`, {
-      method: 'DELETE',
-      headers: { Authorization: $token },
-    });
+    await apiTry(api.del(`/deleteuser?id=${encodeURIComponent(userId)}`));
     users = users.filter(u => u._id !== userId);
   }
 </script>

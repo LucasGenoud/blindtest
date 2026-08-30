@@ -1,19 +1,15 @@
 <script>
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getApi } from '$lib/api.js';
+  import { api, apiTry } from '$lib/api.js';
   import { blindtestStatus } from '$lib/stores/gameStore.js';
 
   let blindtests = $state([]);
   let loading = $state(true);
 
   onMount(async () => {
-    try {
-      const res = await fetch(`${getApi()}/getpubliccustomblindtests`);
-      if (res.ok) blindtests = await res.json();
-    } catch {
-      // The empty state below covers it.
-    }
+    // The empty state covers a failure.
+    blindtests = await apiTry(api.get('/getpubliccustomblindtests'), []);
     loading = false;
   });
 

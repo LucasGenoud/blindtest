@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { getApi } from '$lib/api.js';
+  import { api, apiTry, getApi } from '$lib/api.js';
   import { getVideoId, categoryListValueLabel } from '$lib/misc.js';
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume } from '$lib/stores/gameStore.js';
@@ -44,16 +44,13 @@
 
   async function initGame() {
     if (blindtestId) {
-      // Private blindtests are owner-only now, so the token has to travel with this.
-      const res = await fetch(`${getApi()}/getcustomblindtest/${blindtestId}`, {
-        headers: $token ? { Authorization: $token } : {},
-      });
-      if (!res.ok) {
+      // Private blindtests are owner-only, so this needs the token the client adds.
+      customBlindtest = await apiTry(api.get(`/getcustomblindtest/${blindtestId}`));
+      if (!customBlindtest) {
         loadError = 'This blindtest could not be loaded.';
         videoBuffering = false;
         return;
       }
-      customBlindtest = await res.json();
       totalAudios = customBlindtest.blindtestList.length;
       if (randomOrder) shuffleArray(customBlindtest.blindtestList);
     } else {
@@ -98,11 +95,7 @@
     try {
       // The token identifies who is playing; the server no longer trusts a userId
       // sent in the query string.
-      const res = await fetch(`${getApi()}/getnextaudio?${qs}`, {
-        headers: $token ? { Authorization: $token } : {},
-      });
-      if (!res.ok) { failedToLoad(); return; }
-      const data = await res.json();
+      const data = await api.get(`/getnextaudio?${qs}`);
 
       videoBuffering = true;
       loadFailures = 0;
@@ -147,15 +140,9 @@
   /// The answer is not part of the audio payload — it would be readable in the
   /// network tab before anyone had guessed — so it is fetched at reveal time.
   async function fetchAnswer(id) {
-    try {
-      const res = await fetch(`${getApi()}/getaudioanswer?audioId=${encodeURIComponent(id)}`);
-      if (res.ok && videoId === id) {
-        const data = await res.json();
-        currentAnswer = data.answer ?? '';
-      }
-    } catch {
-      // Leave the answer blank rather than breaking the reveal.
-    }
+    // Leave the answer blank rather than breaking the reveal.
+    const data = await apiTry(api.get(`/getaudioanswer?audioId=${encodeURIComponent(id)}`));
+    if (data && videoId === id) currentAnswer = data.answer ?? '';
   }
 
   $effect(() => {
@@ -252,15 +239,8 @@
   async function flagAudio(auto = false) {
     audioFlagged = true;
     const message = auto ? 'Automatic report for broken audio' : reportMessage;
-    try {
-      await fetch(`${getApi()}/flagaudio`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: $token },
-        body: JSON.stringify({ audio: $currentAudioData, reportMessage: message, auto }),
-      });
-    } catch {
-      // A failed report should not strand the player on the current audio.
-    }
+    // A failed report should not strand the player on the current audio.
+    await apiTry(api.post('/flagaudio', { audio: $currentAudioData, reportMessage: message, auto }));
     reportMessage = '';
     // The automatic path is driven by failedToLoad(); only a manual flag skips here.
     if (!auto) {

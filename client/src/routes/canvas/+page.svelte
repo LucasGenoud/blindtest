@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { fade } from 'svelte/transition';
-  import { getApi } from '$lib/api.js';
+  import { api, apiTry } from '$lib/api.js';
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
   import { colors, debounce } from '$lib/misc.js';
@@ -49,9 +49,9 @@
     imageData = ctx.createImageData(SIZE, SIZE);
 
     try {
-      const res = await fetch(`${getApi()}/getCanvas`);
-      if (res.ok) {
-        pixelData = await res.json();
+      const data = await apiTry(api.get('/getCanvas'));
+      if (data) {
+        pixelData = data;
         drawCanvas();
       }
     } catch {}
@@ -219,16 +219,10 @@
 
     playPaint();
 
-    fetch(`${getApi()}/updatePixel`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify({
-        pixel: {
-          selectedPixel: { x, y },
-          selectedColor: selectedColor,
-        },
-      }),
-    });
+    // Optimistic: the pixel is drawn below regardless, and the broadcast corrects it.
+    apiTry(api.post('/updatePixel', {
+      pixel: { selectedPixel: { x, y }, selectedColor },
+    }));
 
     const idx = y * SIZE + x;
     pixelData[idx] = selectedColor.hex;
@@ -374,10 +368,7 @@
       pixelInfoPos = { x: clientX, y: clientY };
     }
 
-    try {
-      const res = await fetch(`${getApi()}/getPixelData?pixel=${JSON.stringify(pixel)}`);
-      if (res.ok) pixelInfo = await res.json();
-    } catch {}
+    pixelInfo = await apiTry(api.get(`/getPixelData?pixel=${encodeURIComponent(JSON.stringify(pixel))}`), pixelInfo);
   }, 200);
 
   // --- Zoom control helpers ---

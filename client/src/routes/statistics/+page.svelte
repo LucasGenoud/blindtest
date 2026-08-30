@@ -1,13 +1,10 @@
 <script>
   import { onMount } from 'svelte';
-  import { getApi } from '$lib/api.js';
+  import { api, apiTry } from '$lib/api.js';
 
   let stats = $state(null);
   onMount(async () => {
-    try {
-      const res = await fetch(`${getApi()}/getBlindtestStats`);
-      if (res.ok) stats = await res.json();
-    } catch {}
+    stats = await apiTry(api.get('/getBlindtestStats'));
   });
 </script>
 

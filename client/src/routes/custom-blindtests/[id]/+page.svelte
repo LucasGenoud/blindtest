@@ -2,8 +2,7 @@
   import { onMount } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { page } from '$app/stores';
-  import { getApi } from '$lib/api.js';
-  import { token } from '$lib/stores/userStore.js';
+  import { api, apiTry } from '$lib/api.js';
   import { goto } from '$app/navigation';
   import { debounce, categoryListValueLabel } from '$lib/misc.js';
   import { ArrowLeft, X, Search, Plus } from 'lucide-svelte';
@@ -16,12 +15,10 @@
 
   onMount(async () => {
     const id = $page.params.id;
-    const [btRes, audiosRes] = await Promise.all([
-      fetch(`${getApi()}/getcustomblindtest/${id}`, { headers: { Authorization: $token } }),
-      fetch(`${getApi()}/getaudiosnames`, { headers: { Authorization: $token } }),
+    [blindtest, allAudios] = await Promise.all([
+      apiTry(api.get(`/getcustomblindtest/${id}`)),
+      apiTry(api.get('/getaudiosnames'), []),
     ]);
-    if (btRes.ok) blindtest = await btRes.json();
-    if (audiosRes.ok) allAudios = await audiosRes.json();
   });
 
   function filteredPool() {
@@ -58,21 +55,13 @@
   async function save() {
     if (!blindtest) return;
     saving = true;
-    await fetch(`${getApi()}/updatecustomblindtest/${blindtest._id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify({ blindtestList: blindtest.blindtestList }),
-    });
+    await apiTry(api.post(`/updatecustomblindtest/${blindtest._id}`, { blindtestList: blindtest.blindtestList }));
     saving = false;
   }
 
   async function togglePublic() {
     blindtest.public = !blindtest.public;
-    await fetch(`${getApi()}/updatecustomblindtest/${blindtest._id}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: $token },
-      body: JSON.stringify({ public: blindtest.public }),
-    });
+    await apiTry(api.post(`/updatecustomblindtest/${blindtest._id}`, { public: blindtest.public }));
   }
 </script>
 

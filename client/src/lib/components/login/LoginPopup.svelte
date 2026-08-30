@@ -1,7 +1,7 @@
 <script>
   import { token, user } from '$lib/stores/userStore.js';
   import { websocket } from '$lib/stores/websocketStore.js';
-  import { getApi } from '$lib/api.js';
+  import { api } from '$lib/api.js';
   import { connectWebSocket } from '$lib/websocket.js';
   import { checkEmail } from '$lib/misc.js';
 
@@ -18,13 +18,8 @@
     if (!email || !password) { error = 'Fill all fields'; return; }
     loading = true;
     try {
-      const res = await fetch(`${getApi()}/signin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) { error = await res.text(); loading = false; return; }
-      const data = await res.json();
+      // Signing in is the one call with no token to send yet.
+      const data = await api.post('/signin', { email, password }, { auth: false });
       $token = data.token;
       $user = data.user;
       const ws = await connectWebSocket(data.token);
@@ -43,12 +38,7 @@
     if (password.length < 6) { error = 'Password must be at least 6 characters'; return; }
     loading = true;
     try {
-      const res = await fetch(`${getApi()}/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
-      });
-      if (!res.ok) { error = await res.text(); loading = false; return; }
+      await api.post('/signup', { email, password, name }, { auth: false });
       mode = 'signin';
       error = '';
     } catch (e) {

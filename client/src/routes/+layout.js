@@ -1,8 +1,8 @@
 import { browser } from '$app/environment';
-import { getApi } from '$lib/api.js';
+import { api, ApiError } from '$lib/api.js';
 
-// Runs on the client only: the session lives in localStorage, which does not exist
-// during SSR. Child routes read `user` from here via `await parent()`.
+// Runs on the client only: the session lives in localStorage, which does not
+// exist during SSR. Child routes read `user` from here via `await parent()`.
 export async function load({ fetch }) {
   if (!browser) return { user: null, invalidToken: false };
 
@@ -10,18 +10,13 @@ export async function load({ fetch }) {
   if (!t) return { user: null, invalidToken: false };
 
   try {
-    const res = await fetch(`${getApi()}/getuser`, {
-      headers: { Authorization: t },
-    });
-    if (res.ok) {
-      return { user: await res.json(), invalidToken: false };
+    return { user: await api.get('/getuser', { fetch }), invalidToken: false };
+  } catch (e) {
+    // A rejected token is worth dropping; an unreachable server is not.
+    if (e instanceof ApiError) {
+      localStorage.removeItem('token');
+      return { user: null, invalidToken: true };
     }
-  } catch {
-    // Network trouble should not sign the user out; leave the token in place.
     return { user: null, invalidToken: false };
   }
-
-  // The token was rejected, so it is no longer worth keeping.
-  localStorage.removeItem('token');
-  return { user: null, invalidToken: true };
 }
