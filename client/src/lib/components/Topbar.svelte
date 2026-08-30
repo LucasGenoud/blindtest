@@ -40,6 +40,7 @@
       onclick={() => goto('/')}
     >
       <span class="text-lg font-extrabold tracking-[-0.02em] text-text-primary">blindtest</span>
+      <span class="text-xs font-semibold uppercase tracking-[0.1em] text-accent-ink">v2</span>
     </button>
 
     <nav class="hide-mobile flex items-center gap-6">

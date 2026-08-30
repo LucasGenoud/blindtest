@@ -6,7 +6,7 @@
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume } from '$lib/stores/gameStore.js';
   import confetti from 'canvas-confetti';
-  import { Pause, Play, ExternalLink, Flag } from 'lucide-svelte';
+  import { Pause, Play, ExternalLink, Flag, Volume2, VolumeX } from 'lucide-svelte';
 
   let { blindtestId = null, randomOrder = false } = $props();
 
@@ -282,6 +282,17 @@
 
   // Watch volume
   $effect(() => { if (player) { player.volume = $volume / 100; } });
+
+  let volumeBeforeMute = $state(50);
+
+  function toggleMute() {
+    if ($volume > 0) {
+      volumeBeforeMute = $volume;
+      $volume = 0;
+    } else {
+      $volume = volumeBeforeMute || 50;
+    }
+  }
 </script>
 
 <!-- In game the nav bar is replaced by a single line: round counter left, exit
@@ -357,6 +368,17 @@
       {:else if $blindtestStatus === 'paused'}
         <button class="btn-circle" title="Resume" aria-label="Resume" onclick={resumeBlindtest}><Play size={16} stroke-width={2} /></button>
       {/if}
+
+      <div class="volume-control">
+        <button class="btn-circle" title={$volume === 0 ? 'Unmute' : 'Mute'} aria-label={$volume === 0 ? 'Unmute' : 'Mute'} onclick={toggleMute}>
+          {#if $volume === 0}
+            <VolumeX size={16} stroke-width={2} />
+          {:else}
+            <Volume2 size={16} stroke-width={2} />
+          {/if}
+        </button>
+        <input type="range" min="0" max="100" bind:value={$volume} aria-label="Volume" />
+      </div>
       <button class="btn-secondary" disabled={$showAnswer} onclick={revealAnswer}>Reveal answer</button>
       {#if $currentAudioNumber < totalAudios}
         <button class="btn-secondary" onclick={skipAudio}>Skip clip</button>
@@ -529,6 +551,17 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .volume-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 8px;
+  }
+
+  .volume-control input[type="range"] {
+    width: 96px;
   }
 
   @media screen and (max-width: 760px) {
