@@ -64,6 +64,7 @@ See `.env.example` for the full list. Key ones:
 | `SERVER_S3_*` | server (runtime) | SeaweedFS/AWS S3 connection details. |
 | `LLM_BASE_URL`, `LLM_MODEL` | server (runtime) | OpenAI-compatible endpoint for the blindtest assistant. Both unset = feature disabled and hidden in the client. |
 | `LLM_API_KEY` | server (runtime) | Bearer token for that endpoint. Optional — local servers often need none. |
+| `LLM_CONTEXT_TOKENS` | server (runtime) | Context window the endpoint serves, not what the model claims (default 32768). The catalog is trimmed to fit it. |
 
 ## Server Quirks
 

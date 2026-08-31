@@ -21,6 +21,13 @@ pub struct LlmConfig {
     pub json_mode: bool,
     /// Upper bound on how many library entries are put in front of the model.
     pub max_catalog: usize,
+    /// The context window this *endpoint* serves, which is not always what the
+    /// model supports: a vLLM or llama.cpp server started with a smaller
+    /// `--max-model-len` will refuse a prompt the model itself could hold.
+    pub context_tokens: usize,
+    /// Held back out of the window for the answer, and for the extra turn a
+    /// repair costs.
+    pub reserve_tokens: usize,
     pub temperature: f32,
     client: reqwest::Client,
 }
@@ -88,6 +95,15 @@ impl LlmConfig {
             max_catalog: env_var("LLM_MAX_CATALOG")
                 .and_then(|v| v.parse::<usize>().ok())
                 .unwrap_or(4000),
+            // What a self-hosted vLLM or llama.cpp is most often started with.
+            // Overshooting the window is a hard 400 rather than a worse answer, so
+            // the default assumes the small case; raise it to match the endpoint.
+            context_tokens: env_var("LLM_CONTEXT_TOKENS")
+                .and_then(|v| v.parse::<usize>().ok())
+                .unwrap_or(32_768),
+            reserve_tokens: env_var("LLM_RESERVE_TOKENS")
+                .and_then(|v| v.parse::<usize>().ok())
+                .unwrap_or(2_000),
             temperature: env_var("LLM_TEMPERATURE")
                 .and_then(|v| v.parse::<f32>().ok())
                 .unwrap_or(0.4),
@@ -101,6 +117,7 @@ impl LlmConfig {
             "model": self.model,
             "messages": messages,
             "temperature": self.temperature,
+            "max_tokens": self.reserve_tokens,
         });
         if self.json_mode {
             body["response_format"] = serde_json::json!({ "type": "json_object" });
@@ -156,6 +173,7 @@ impl LlmConfig {
             "model": self.model,
             "messages": messages,
             "temperature": self.temperature,
+            "max_tokens": self.reserve_tokens,
             "stream": true,
         });
         if self.json_mode {

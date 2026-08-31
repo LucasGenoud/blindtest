@@ -45,6 +45,9 @@ struct CatalogEntry {
     id: String,
     answer: String,
     category: String,
+    /// Never rendered into the prompt. It only decides which clips go first when
+    /// the library does not fit the context window.
+    plays: i64,
 }
 
 /// Whether the deployment configured a model at all, so the client can hide the
@@ -196,15 +199,43 @@ fn prepare(
         return Err(HttpResponse::ServiceUnavailable().json("The clip library is empty."));
     }
 
+    // Everything except the catalog is fixed, so measure it first and give the
+    // catalog whatever is left. Sending more than the endpoint serves is a flat
+    // 400, so the catalog is trimmed to fit rather than gambling on it.
     let by_id: std::collections::HashMap<&str, usize> = catalog
         .iter()
         .enumerate()
         .map(|(i, entry)| (entry.id.as_str(), i))
         .collect();
+    let opening = user_turn(&name, &current, &by_id, &catalog, &prompt);
 
-    let mut messages = vec![ChatMessage::system(system_prompt(&catalog))];
+    let overhead = estimate_tokens(&system_prompt(&category_breakdown(&catalog), "", true))
+        + estimate_tokens(&opening)
+        + history.iter().map(|m| estimate_tokens(&m.content)).sum::<usize>();
+    let budget = cfg
+        .context_tokens
+        .saturating_sub(cfg.reserve_tokens)
+        .saturating_sub(overhead);
+
+    let (catalog, dropped) = fit_to_budget(catalog, budget);
+    if dropped > 0 {
+        log::warn!(
+            "Catalog trimmed by {} clip(s) to fit {} tokens of context; {} offered. Raise \
+             LLM_CONTEXT_TOKENS if the endpoint serves a bigger window.",
+            dropped,
+            cfg.context_tokens,
+            catalog.len()
+        );
+    }
+    if catalog.is_empty() {
+        return Err(HttpResponse::ServiceUnavailable()
+            .json("The clip library does not fit this model's context window."));
+    }
+
+    let mut messages =
+        vec![ChatMessage::system(system_prompt(&category_breakdown(&catalog), &catalog_lines(&catalog), dropped > 0))];
     messages.extend(history);
-    messages.push(ChatMessage::user(user_turn(&name, &current, &by_id, &catalog, &prompt)));
+    messages.push(ChatMessage::user(opening));
 
     Ok(Turn { cfg, id, owner, prompt, current, catalog, messages })
 }
@@ -480,7 +511,7 @@ fn owns_blindtest(conn: &rusqlite::Connection, id: &str, owner: &str) -> bool {
 /// shown to the model.
 fn load_catalog(conn: &rusqlite::Connection, limit: usize) -> Vec<CatalogEntry> {
     let Ok(mut stmt) = conn.prepare(
-        "SELECT id, answer, category FROM (
+        "SELECT id, answer, category, count FROM (
             SELECT id, answer, category, count FROM audios
             WHERE processing_status = 'ready'
               AND id NOT IN (SELECT DISTINCT audio_id FROM flagged_audios WHERE auto = 0)
@@ -495,6 +526,7 @@ fn load_catalog(conn: &rusqlite::Connection, limit: usize) -> Vec<CatalogEntry> 
             id: row.get(0)?,
             answer: row.get(1)?,
             category: row.get(2)?,
+            plays: row.get(3)?,
         })
     })
     .map(|rows| rows.filter_map(|r| r.ok()).collect())
@@ -544,21 +576,94 @@ fn sanitize(value: &str) -> String {
     }
 }
 
-fn system_prompt(catalog: &[CatalogEntry]) -> String {
+/// Rough token count for a piece of prompt.
+///
+/// No tokenizer bundled here would match whichever model is configured, and the
+/// catalog is the worst case for a naive estimate: proper nouns, accents and
+/// punctuation split far harder than prose. A real 32k refusal put this content
+/// at about 2.8 bytes per token, so count at 2.5 — conservative enough that the
+/// window is never overshot, close enough that clips are not dropped for nothing.
+fn estimate_tokens(text: &str) -> usize {
+    (text.len() * 2).div_ceil(5)
+}
+
+fn category_breakdown(catalog: &[CatalogEntry]) -> String {
     let mut counts: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     for entry in catalog {
         *counts.entry(entry.category.as_str()).or_insert(0) += 1;
     }
-    let breakdown = counts
-        .iter()
-        .map(|(cat, n)| format!("{} ({})", cat, n))
-        .collect::<Vec<_>>()
-        .join(", ");
+    counts.iter().map(|(cat, n)| format!("{} ({})", cat, n)).collect::<Vec<_>>().join(", ")
+}
 
-    let mut lines = String::with_capacity(catalog.len() * 40);
+/// The catalog, grouped under one heading per category.
+///
+/// Naming the category on every line costs about 17KB across the library — a
+/// sixth of the whole prompt — to repeat what the grouping already says. The
+/// numbering runs unbroken across the groups, so a clip's number does not depend
+/// on which heading it sits under.
+fn catalog_lines(catalog: &[CatalogEntry]) -> String {
+    let mut lines = String::with_capacity(catalog.len() * 26);
+    let mut group = "";
     for (i, entry) in catalog.iter().enumerate() {
-        lines.push_str(&format!("{}|{}|{}\n", i + 1, sanitize(&entry.answer), entry.category));
+        if entry.category != group {
+            group = &entry.category;
+            lines.push_str(&format!("\n### {}\n", group));
+        }
+        lines.push_str(&format!("{}|{}\n", i + 1, sanitize(&entry.answer)));
     }
+    lines
+}
+
+/// Drop clips until the catalog fits `budget` tokens, taking the same share from
+/// every category.
+///
+/// Trimming globally by play count would be simpler but could empty a whole
+/// category — ask for quotes and find none left. Within a category the
+/// least-played go first: that is a rule for what to drop, not a claim about
+/// difficulty, and the count never reaches the model.
+fn fit_to_budget(catalog: Vec<CatalogEntry>, budget: usize) -> (Vec<CatalogEntry>, usize) {
+    let total = estimate_tokens(&catalog_lines(&catalog));
+    if total <= budget || catalog.is_empty() {
+        return (catalog, 0);
+    }
+
+    let before = catalog.len();
+    let keep_share = budget as f64 / total as f64;
+
+    // The catalog arrives grouped by category, so each run is one group.
+    let mut kept: Vec<CatalogEntry> = Vec::with_capacity((before as f64 * keep_share) as usize + 1);
+    let mut group: Vec<CatalogEntry> = Vec::new();
+
+    let mut flush = |group: &mut Vec<CatalogEntry>, kept: &mut Vec<CatalogEntry>| {
+        if group.is_empty() {
+            return;
+        }
+        let keep = ((group.len() as f64 * keep_share).floor() as usize).clamp(1, group.len());
+        group.sort_by(|a, b| b.plays.cmp(&a.plays).then_with(|| a.answer.cmp(&b.answer)));
+        group.truncate(keep);
+        group.sort_by(|a, b| a.answer.cmp(&b.answer));
+        kept.append(group);
+    };
+
+    for entry in catalog {
+        if group.first().is_some_and(|g| g.category != entry.category) {
+            flush(&mut group, &mut kept);
+        }
+        group.push(entry);
+    }
+    flush(&mut group, &mut kept);
+
+    let dropped = before - kept.len();
+    (kept, dropped)
+}
+
+fn system_prompt(breakdown: &str, lines: &str, trimmed: bool) -> String {
+    let subset = if trimmed {
+        "\nThis is part of the library, not all of it: it was trimmed to fit. If the brief needs \
+         something you cannot find here, say so rather than forcing a poor match.\n"
+    } else {
+        ""
+    };
 
     format!(
         "You assemble blindtests: quizzes where a short audio clip plays and players name what it is from.
@@ -566,9 +671,9 @@ fn system_prompt(catalog: &[CatalogEntry]) -> String {
 You pick tracks from a fixed library. You never invent one. Every track you choose is referred to by \
 its catalog number.
 
-CATALOG — one line per clip, `number|title|category`, grouped by category. Categories present: \
-{breakdown}.
-
+CATALOG — grouped under a `### category` heading, then one line per clip as `number|title`. A \
+clip's category is the heading it sits under. Categories present: {breakdown}.
+{subset}
 {lines}
 JUDGING DIFFICULTY. From what you know about each title, and nothing else. Easy means most players \
 name it instantly — a film everyone has seen, a song that was everywhere. Medium takes a moment. Hard \
@@ -697,7 +802,9 @@ fn repair_turn(rejected: &[String], catalog_len: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{repair_turn, resolve, sanitize, CatalogEntry};
+    use super::{
+        catalog_lines, estimate_tokens, fit_to_budget, repair_turn, resolve, sanitize, CatalogEntry,
+    };
 
     fn catalog() -> Vec<CatalogEntry> {
         (1..=3)
@@ -705,6 +812,7 @@ mod tests {
                 id: format!("id-{}", i),
                 answer: format!("Track {}", i),
                 category: "movies".into(),
+                plays: 0,
             })
             .collect()
     }
@@ -754,6 +862,72 @@ mod tests {
         let turn = repair_turn(&many, 3);
         assert!(turn.contains("and 5 more"), "{turn}");
         assert!(!turn.contains("25,"), "{turn}");
+    }
+
+    fn mixed(per_category: usize) -> Vec<CatalogEntry> {
+        let mut out = Vec::new();
+        for category in ["animes", "games", "quotes"] {
+            for i in 0..per_category {
+                out.push(CatalogEntry {
+                    id: format!("{}-{}", category, i),
+                    answer: format!("{} title number {}", category, i),
+                    category: category.into(),
+                    // Ascending, so the low-numbered ones are the first to go.
+                    plays: i as i64,
+                });
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn a_catalog_that_fits_is_left_alone() {
+        let (kept, dropped) = fit_to_budget(mixed(10), 100_000);
+        assert_eq!(kept.len(), 30);
+        assert_eq!(dropped, 0);
+    }
+
+    #[test]
+    fn trimming_brings_the_catalog_under_budget() {
+        let budget = 200;
+        let (kept, dropped) = fit_to_budget(mixed(40), budget);
+        assert!(dropped > 0);
+        assert!(
+            estimate_tokens(&catalog_lines(&kept)) <= budget,
+            "still {} tokens",
+            estimate_tokens(&catalog_lines(&kept))
+        );
+    }
+
+    /// Trimming globally by play count could empty a category outright, so that a
+    /// brief asking for quotes finds none left.
+    #[test]
+    fn every_category_survives_a_trim() {
+        let (kept, _) = fit_to_budget(mixed(40), 200);
+        for category in ["animes", "games", "quotes"] {
+            assert!(
+                kept.iter().any(|e| e.category == category),
+                "{category} was trimmed away entirely"
+            );
+        }
+    }
+
+    #[test]
+    fn the_least_played_go_first_and_order_is_kept() {
+        let (kept, _) = fit_to_budget(mixed(40), 400);
+        let animes: Vec<&CatalogEntry> = kept.iter().filter(|e| e.category == "animes").collect();
+        assert!(animes.iter().all(|e| e.plays >= 1), "a least-played clip survived a cut");
+
+        let mut alphabetical = animes.clone();
+        alphabetical.sort_by(|a, b| a.answer.cmp(&b.answer));
+        let same = animes.iter().zip(&alphabetical).all(|(a, b)| a.answer == b.answer);
+        assert!(same, "the surviving clips are no longer in catalog order");
+    }
+
+    #[test]
+    fn a_budget_of_nothing_still_leaves_one_per_category() {
+        let (kept, _) = fit_to_budget(mixed(5), 0);
+        assert_eq!(kept.len(), 3);
     }
 
     #[test]
