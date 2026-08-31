@@ -25,8 +25,10 @@ pub struct LlmConfig {
     /// model supports: a vLLM or llama.cpp server started with a smaller
     /// `--max-model-len` will refuse a prompt the model itself could hold.
     pub context_tokens: usize,
-    /// Held back out of the window for the answer, and for the extra turn a
-    /// repair costs.
+    /// Held back out of the window for the answer, and sent as `max_tokens`. The
+    /// answer itself is small — a sentence and a list of numbers, ~350 tokens — so
+    /// this is generous unless the model thinks out loud first, which on a narrow
+    /// window is better turned off than paid for.
     pub reserve_tokens: usize,
     pub temperature: f32,
     /// Merged into every request body. The way to reach provider-specific
@@ -107,7 +109,7 @@ impl LlmConfig {
                 .unwrap_or(32_768),
             reserve_tokens: env_var("LLM_RESERVE_TOKENS")
                 .and_then(|v| v.parse::<usize>().ok())
-                .unwrap_or(4_000),
+                .unwrap_or(1_500),
             temperature: env_var("LLM_TEMPERATURE")
                 .and_then(|v| v.parse::<f32>().ok())
                 .unwrap_or(0.4),

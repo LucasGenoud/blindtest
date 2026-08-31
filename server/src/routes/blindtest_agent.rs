@@ -32,6 +32,21 @@ const REPAIR_ATTEMPTS: usize = 1;
 /// A brief long enough to hide instructions in is not a brief.
 const MAX_PROMPT_CHARS: usize = 2000;
 
+/// Kept free for the two messages a repair appends: the model's own answer echoed
+/// back, and the correction. They are added after the budget is struck, so without
+/// this the retry is the request that overflows.
+const REPAIR_HEADROOM: usize = 768;
+
+/// What cannot be counted from the text alone.
+///
+/// The chat template wraps every message in role markers and adds a BOS token, and
+/// a byte-based token estimate is only ever close. Budgeting to the exact window
+/// put a real request one token over it, so a margin is not optional: 2% of the
+/// window for estimate drift, plus scaffolding per message.
+fn slack(context_tokens: usize, messages: usize) -> usize {
+    512 + context_tokens / 50 + messages * 8
+}
+
 #[derive(Deserialize)]
 pub struct GenerateBody {
     pub prompt: String,
@@ -215,6 +230,8 @@ fn prepare(
     let budget = cfg
         .context_tokens
         .saturating_sub(cfg.reserve_tokens)
+        .saturating_sub(slack(cfg.context_tokens, history.len() + 2))
+        .saturating_sub(REPAIR_HEADROOM)
         .saturating_sub(overhead);
 
     let (catalog, dropped) = fit_to_budget(catalog, budget);
