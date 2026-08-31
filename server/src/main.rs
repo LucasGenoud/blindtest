@@ -1,4 +1,5 @@
 mod db;
+mod llm;
 mod middleware;
 mod models;
 mod routes;
@@ -21,6 +22,11 @@ async fn main() -> std::io::Result<()> {
     log::info!("Processing queue worker started.");
 
     let auth_state = middleware::AuthState::new();
+    let llm_config = llm::LlmConfig::from_env();
+    match &llm_config {
+        Some(cfg) => log::info!("Blindtest assistant enabled: model {} at {}", cfg.model, cfg.base_url),
+        None => log::info!("Blindtest assistant disabled (set LLM_BASE_URL and LLM_MODEL to enable)"),
+    }
     let broadcaster = ws::WsBroadcaster::new();
     let canvas_cache = routes::canvas::CanvasCache::new();
 
@@ -49,6 +55,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(broadcaster.clone()))
             .app_data(web::Data::new(processing_queue.clone()))
             .app_data(web::Data::new(canvas_cache.clone()))
+            .app_data(web::Data::new(llm_config.clone()))
             // Auth
             .route("/signin", web::post().to(routes::auth::signin))
             .route("/signup", web::post().to(routes::auth::signup))
@@ -82,6 +89,12 @@ async fn main() -> std::io::Result<()> {
             .route("/updatecustomblindtest/{id}", web::post().to(routes::custom_blindtests::update))
             .route("/deletecustomblindtest/{id}", web::delete().to(routes::custom_blindtests::delete))
             .route("/getaudiosnames", web::get().to(routes::custom_blindtests::get_audio_names))
+            // Blindtest assistant
+            .route("/getblindtestagentstatus", web::get().to(routes::blindtest_agent::status))
+            .route("/getblindtestagentmessages/{id}", web::get().to(routes::blindtest_agent::get_messages))
+            .route("/clearblindtestagentmessages/{id}", web::delete().to(routes::blindtest_agent::clear_messages))
+            .route("/generateblindtest/{id}", web::post().to(routes::blindtest_agent::generate))
+            .route("/streamblindtest/{id}", web::post().to(routes::blindtest_agent::generate_stream))
             // Canvas
             .route("/getCanvas", web::get().to(routes::canvas::get_canvas))
             .route("/getPixelData", web::get().to(routes::canvas::get_pixel_data))

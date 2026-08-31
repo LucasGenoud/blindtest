@@ -83,10 +83,66 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+/**
+ * POST that reads a server-sent event stream back.
+ *
+ * `EventSource` only does GET, and a prompt has no business in a URL, so the
+ * frames are parsed off the response body here instead. `onEvent` is called with
+ * the event name and its parsed data as each frame completes; throwing from it
+ * aborts the read.
+ *
+ * @param {string} path
+ * @param {any} body
+ * @param {(event: string, data: any) => void} onEvent
+ * @param {object} [options]
+ * @param {AbortSignal} [options.signal]
+ */
+async function streamRequest(path, body, onEvent, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  const t = get(token);
+  if (t) headers.Authorization = t;
+
+  const res = await fetch(`${getApi()}${path}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal: options.signal,
+  });
+
+  if (!res.ok) throw await errorFrom(res);
+  if (!res.body) throw new TypeError('This browser cannot read a streamed response');
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // Frames are separated by a blank line; whatever trails is still arriving.
+    let end;
+    while ((end = buffer.indexOf('\n\n')) !== -1) {
+      const frame = buffer.slice(0, end);
+      buffer = buffer.slice(end + 2);
+
+      let event = 'message';
+      let data = '';
+      for (const line of frame.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim();
+        else if (line.startsWith('data:')) data += line.slice(5).trim();
+      }
+      if (data) onEvent(event, JSON.parse(data));
+    }
+  }
+}
+
 export const api = {
   get: (path, options) => request(path, { ...options, method: 'GET' }),
   post: (path, body, options) => request(path, { ...options, method: 'POST', body }),
   del: (path, options) => request(path, { ...options, method: 'DELETE' }),
+  stream: streamRequest,
 };
 
 /**

@@ -17,6 +17,7 @@ This repository was generated and migrated using an AI assistant. While the code
 
 ## Features
 - Manage audio assets with S3 integration and playback directly from the dashboard.
+- Build custom blindtests by hand, or describe one in plain language and let an LLM assemble it from the clip library (optional; needs `LLM_BASE_URL` / `LLM_MODEL`).
 - Migrate existing video files to S3 using Python migration scripts.
 - Real‑time audio upload and processing via Rust backend routes.
 - User authentication and cursor visibility handling across canvas interactions.

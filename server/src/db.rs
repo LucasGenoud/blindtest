@@ -55,9 +55,10 @@ pub fn init_db() -> Result<DbPool> {
     let migration3 = include_str!("../migrations/003_remove_ratings.sql");
     let migration4 = include_str!("../migrations/004_remove_chat.sql");
     let migration5 = include_str!("../migrations/005_flag_source_and_cleanup.sql");
+    let migration6 = include_str!("../migrations/006_blindtest_agent.sql");
     conn.execute_batch(schema)?;
     // Apply migrations safely: execute each statement individually and ignore known benign errors
-    for migration in &[migration2, migration3, migration4, migration5] {
+    for migration in &[migration2, migration3, migration4, migration5, migration6] {
         let statements: Vec<&str> = migration.split(';').filter(|s| !s.trim().is_empty()).collect();
         for stmt in statements {
             let stmt = stmt.trim();

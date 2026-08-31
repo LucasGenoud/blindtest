@@ -62,6 +62,8 @@ See `.env.example` for the full list. Key ones:
 | `FRONTEND_URL` | server (runtime) | Comma-separated CORS origins. Unset = allow all (dev-safe, prod-unsafe). |
 | `CLIENT_ORIGIN` | client (runtime) | SvelteKit CSRF/origin validation. |
 | `SERVER_S3_*` | server (runtime) | SeaweedFS/AWS S3 connection details. |
+| `LLM_BASE_URL`, `LLM_MODEL` | server (runtime) | OpenAI-compatible endpoint for the blindtest assistant. Both unset = feature disabled and hidden in the client. |
+| `LLM_API_KEY` | server (runtime) | Bearer token for that endpoint. Optional — local servers often need none. |
 
 ## Server Quirks
 
@@ -70,6 +72,13 @@ See `.env.example` for the full list. Key ones:
 - **Canvas**: 1000×1000 grid (1M rows in `canvas_pixels`). Initialized on first startup — takes time.
 - **Auth**: JWT signed with PEM key pair at `server/secret/`. Server mounts these read-only.
 - **Video processing**: spawns `yt-dlp` and `ffmpeg` on the host/container. Both must be installed (Dockerfile handles this).
+- **Blindtest assistant** (`src/llm.rs`, `src/routes/blindtest_agent.rs`): talks to any OpenAI-compatible
+  `/chat/completions`. The whole playable library is put in the prompt as a numbered catalog and the
+  model answers with catalog numbers, never titles, so a generated blindtest is always playable. One
+  conversation thread per blindtest lives in `blindtest_agent_messages`. Rate limited to 30 prompts
+  per account per hour. `POST /streamblindtest/{id}` returns SSE and is what the client uses;
+  `POST /generateblindtest/{id}` does the same work in one response and is the fallback for proxies
+  that buffer `text/event-stream`. Both share `prepare` / `interpret` / `persist`.
 
 ## Client Quirks
 

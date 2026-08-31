@@ -5,6 +5,7 @@
   import { api, apiTry } from '$lib/api.js';
   import { goto } from '$app/navigation';
   import { debounce, categoryListValueLabel } from '$lib/misc.js';
+  import BlindtestAgentPanel from '$lib/components/blindtests/BlindtestAgentPanel.svelte';
   import { ArrowLeft, X, Search, Plus } from 'lucide-svelte';
 
   let blindtest = $state(null);
@@ -12,13 +13,20 @@
   let search = $state('');
   let filterCat = $state('');
   let saving = $state(false);
+  let agent = $state({ enabled: false, model: '' });
+  /** 'library' picks tracks by hand, 'assistant' asks the model for them. */
+  let mode = $state($page.url.searchParams.get('mode') === 'assistant' ? 'assistant' : 'library');
 
   onMount(async () => {
     const id = $page.params.id;
-    [blindtest, allAudios] = await Promise.all([
+    [blindtest, allAudios, agent] = await Promise.all([
       apiTry(api.get(`/getcustomblindtest/${id}`)),
       apiTry(api.get('/getaudiosnames'), []),
+      apiTry(api.get('/getblindtestagentstatus'), { enabled: false, model: '' }),
     ]);
+    // Arriving with ?mode=assistant on a server with no model configured would
+    // otherwise show an empty half.
+    if (!agent.enabled) mode = 'library';
   });
 
   function filteredPool() {
@@ -59,6 +67,11 @@
     saving = false;
   }
 
+  /** The assistant writes the list server-side, so this only catches the view up. */
+  function agentApplied(list) {
+    if (blindtest) blindtest.blindtestList = list;
+  }
+
   async function togglePublic() {
     blindtest.public = !blindtest.public;
     await apiTry(api.post(`/updatecustomblindtest/${blindtest._id}`, { public: blindtest.public }));
@@ -71,10 +84,16 @@
   {#if blindtest}
     <div class="editor-content" in:fade={{ duration: 250 }}>
       <div class="editor-header">
-        <button class="btn-primary" onclick={() => goto('/custom-blindtests')}><ArrowLeft size={14} stroke-width={1.8} /> Back</button>
+        <button class="btn-secondary" onclick={() => goto('/custom-blindtests')}><ArrowLeft size={14} stroke-width={1.8} /> Back</button>
         <h2>{blindtest.name}</h2>
         <div class="header-right">
           {#if saving}<span class="save-indicator">Saving...</span>{/if}
+          {#if agent.enabled}
+            <div class="mode-switch" role="group" aria-label="How tracks are chosen">
+              <button class="mode" class:active={mode === 'library'} onclick={() => (mode = 'library')}>Library</button>
+              <button class="mode" class:active={mode === 'assistant'} onclick={() => (mode = 'assistant')}>Assistant</button>
+            </div>
+          {/if}
           <label class="toggle" class:active={blindtest.public}>
             <input type="checkbox" checked={blindtest.public} onchange={togglePublic} />
             {blindtest.public ? 'Public' : 'Private'}
@@ -83,6 +102,16 @@
       </div>
 
       <div class="editor-split">
+        {#if mode === 'assistant'}
+          <!-- Assistant -->
+          <div class="pool">
+            <BlindtestAgentPanel
+              blindtestId={blindtest._id}
+              model={agent.model}
+              onapplied={agentApplied}
+            />
+          </div>
+        {:else}
         <!-- Pool -->
         <div class="pool">
           <div class="panel-header">
@@ -103,6 +132,7 @@
             {/each}
           </div>
         </div>
+        {/if}
 
         <!-- Selected -->
         <div class="selected">
@@ -157,6 +187,24 @@
     letter-spacing: 0.1em;
     color: var(--signal-correct);
   }
+  /* Two ways to fill the same list, so they read as one control rather than two
+     buttons that might both be doing something. */
+  .mode-switch { display: flex; }
+  .mode {
+    background: var(--surface-2);
+    border: 0;
+    border-radius: 0;
+    min-height: 36px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color var(--duration-fast) ease-out;
+  }
+  .mode + .mode { border-left: 1px solid var(--divider); }
+  .mode:hover { color: var(--text-primary); }
+  .mode.active { color: var(--accent-ink); }
   .editor-split { display: flex; flex: 1; overflow: hidden; }
   .pool, .selected { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .pool { border-right: 2px solid var(--divider); }

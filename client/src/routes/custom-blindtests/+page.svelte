@@ -4,20 +4,26 @@
   import { api, apiTry } from '$lib/api.js';
   import { token, user, userPermission } from '$lib/stores/userStore.js';
   import { goto } from '$app/navigation';
-  import { Plus } from 'lucide-svelte';
+  import { Plus, Sparkles } from 'lucide-svelte';
 
   let blindtests = $state([]);
+  let agent = $state({ enabled: false, model: '' });
 
   onMount(async () => {
     if (!$token) { goto('/'); return; }
-    blindtests = await apiTry(api.get('/getcustomblindtests'), []);
+    [blindtests, agent] = await Promise.all([
+      apiTry(api.get('/getcustomblindtests'), []),
+      apiTry(api.get('/getblindtestagentstatus'), { enabled: false, model: '' }),
+    ]);
   });
 
-  async function create() {
+  /** @param {'library'|'assistant'} mode which half of the editor to open on */
+  async function create(mode = 'library') {
     const name = prompt('Enter blindtest name:');
     if (!name) return;
     const created = await apiTry(api.post('/createcustomblindtest', { name }));
-    if (created) goto(`/custom-blindtests/${created._id}`);
+    if (!created) return;
+    goto(`/custom-blindtests/${created._id}${mode === 'assistant' ? '?mode=assistant' : ''}`);
   }
 
   async function deleteBt(id) {
@@ -32,13 +38,27 @@
 <div class="manage-page">
   <div class="page-header">
     <h1>My Custom Blindtests</h1>
-    <button class="btn-primary" onclick={create}><Plus size={14} stroke-width={1.8} /> Create</button>
+    <div class="header-actions">
+      {#if agent.enabled}
+        <button class="btn-secondary" onclick={() => create('assistant')}>
+          <Sparkles size={14} stroke-width={1.8} /> Generate
+        </button>
+      {/if}
+      <button class="btn-primary" onclick={() => create('library')}><Plus size={14} stroke-width={1.8} /> Create</button>
+    </div>
   </div>
 
   {#if blindtests.length === 0}
     <div class="empty-state">
       <h2>No blindtests yet</h2>
-      <p>Build one from the clip library and choose whether to share it.</p>
+      <p>
+        {#if agent.enabled}
+          Pick clips from the library yourself, or describe the blindtest you want and let the
+          assistant assemble it.
+        {:else}
+          Build one from the clip library and choose whether to share it.
+        {/if}
+      </p>
     </div>
   {/if}
 
@@ -75,6 +95,7 @@
     color: var(--text-primary);
     letter-spacing: -0.02em;
   }
+  .header-actions { display: flex; align-items: center; gap: 8px; }
   /* Same skeleton every time: heading, one line, one action. Flush left. */
   .empty-state {
     padding: 32px 0;
