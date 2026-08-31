@@ -35,6 +35,9 @@ pub struct LlmConfig {
     /// switches without teaching this client about any of them — turning a
     /// reasoning model's thinking off, for one.
     pub extra_body: Option<serde_json::Value>,
+    /// Whole-request ceiling for the non-streaming call. A streamed call is not
+    /// held to it: it is bounded by silence instead, see `from_env`.
+    timeout: Duration,
     client: reqwest::Client,
 }
 
@@ -90,12 +93,19 @@ impl LlmConfig {
         let base_url = env_var("LLM_BASE_URL")?.trim_end_matches('/').to_string();
         let model = env_var("LLM_MODEL")?;
 
-        let timeout = env_var("LLM_TIMEOUT_SECS")
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(120);
+        let timeout = Duration::from_secs(
+            env_var("LLM_TIMEOUT_SECS").and_then(|v| v.parse::<u64>().ok()).unwrap_or(300),
+        );
 
+        // Deliberately not a whole-request timeout. reqwest counts reading the
+        // body against `timeout`, so a streamed answer from a model that thinks
+        // for three minutes was being cut off by its own client at two. What
+        // matters for a stream is silence, not duration: `read_timeout` fires
+        // only when nothing arrives, and the non-streaming call sets an overall
+        // ceiling per request instead.
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(timeout))
+            .read_timeout(timeout)
+            .connect_timeout(Duration::from_secs(15))
             .build()
             .map_err(|e| log::error!("Could not build the LLM HTTP client: {}", e))
             .ok()?;
@@ -129,6 +139,7 @@ impl LlmConfig {
                     }
                 }
             }),
+            timeout,
             client,
         })
     }
@@ -156,7 +167,7 @@ impl LlmConfig {
         }
 
         let url = format!("{}/chat/completions", self.base_url);
-        let mut request = self.client.post(&url).json(&body);
+        let mut request = self.client.post(&url).timeout(self.timeout).json(&body);
         if let Some(ref key) = self.api_key {
             request = request.bearer_auth(key);
         }

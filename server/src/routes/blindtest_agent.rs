@@ -661,6 +661,9 @@ async fn run_stream(mut turn: Turn, db: web::Data<DbPool>, tx: tokio::sync::mpsc
         // document, so the prose has to be picked out of it as it arrives.
         let mut sent = String::new();
         let mut retry = false;
+        // A reasoning model can spend minutes before the answer begins. Say so,
+        // rather than leaving the panel on "reading the library" the whole time.
+        let mut said_thinking = false;
 
         while let Some(chunk) = stream.next().await {
             let text = match chunk {
@@ -688,7 +691,15 @@ async fn run_stream(mut turn: Turn, db: web::Data<DbPool>, tx: tokio::sync::mpsc
             };
             raw.push_str(&text);
 
-            let Some(prefix) = reply_prefix(&raw) else { continue };
+            let Some(prefix) = reply_prefix(&raw) else {
+                if !said_thinking {
+                    said_thinking = true;
+                    if tx.send(Ok(sse("thinking", serde_json::json!({})))).await.is_err() {
+                        return;
+                    }
+                }
+                continue;
+            };
             if !prefix.starts_with(&sent) || prefix.len() == sent.len() {
                 continue;
             }

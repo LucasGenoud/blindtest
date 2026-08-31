@@ -17,6 +17,8 @@
   let thread = $state(null);
   /** The reply as it arrives, before the turn is finished and recorded. */
   let streamed = $state('');
+  /** What the model is doing while there is still nothing to show. */
+  let phase = $state('reading');
 
   const examples = [
     '20 tracks from 90s cartoons, easy enough for a family game',
@@ -42,6 +44,7 @@
     sending = true;
     draft = '';
     streamed = '';
+    phase = 'reading';
     // Shown straight away: the round trip is a model call and can take a while.
     messages = [...messages, { _id: `pending-${Date.now()}`, role: 'user', content: prompt, tracks: [] }];
     scrollDown();
@@ -56,9 +59,13 @@
         if (event === 'delta') {
           streamed += data.text;
           scrollDown();
+        } else if (event === 'thinking') {
+          // A reasoning model can spend minutes here before any prose appears.
+          phase = 'thinking';
         } else if (event === 'reset') {
           // The answer that prose belonged to is being thrown away and rewritten.
           streamed = '';
+          phase = 'thinking';
         } else if (event === 'error') {
           failure = data.message;
         } else if (event === 'done') {
@@ -169,7 +176,9 @@
           <div class="said">{streamed}</div>
         {:else}
           <div class="working"><div class="loading-line"></div></div>
-          <div class="said dim">Reading the library…</div>
+          <div class="said dim">
+            {phase === 'thinking' ? 'Thinking it through…' : 'Reading the library…'}
+          </div>
         {/if}
       </div>
     {/if}
