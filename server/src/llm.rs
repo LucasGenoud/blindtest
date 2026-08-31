@@ -126,7 +126,7 @@ impl LlmConfig {
                 .unwrap_or(32_768),
             reserve_tokens: env_var("LLM_RESERVE_TOKENS")
                 .and_then(|v| v.parse::<usize>().ok())
-                .unwrap_or(4_000),
+                .unwrap_or(12_000),
             temperature: env_var("LLM_TEMPERATURE")
                 .and_then(|v| v.parse::<f32>().ok())
                 .unwrap_or(0.4),
@@ -197,6 +197,16 @@ impl LlmConfig {
 
         let choice = parsed.choices.into_iter().next();
         if choice.as_ref().and_then(|c| c.finish_reason.as_deref()) == Some("length") {
+            return Err(LlmError::cut_off(truncate(&text, 500)));
+        }
+
+        // Thought about it and never answered: the same failure as running out of
+        // room, and worth reporting as such so the caller can make more of it.
+        let thought_only = choice.as_ref().is_some_and(|c| {
+            c.message.content.as_deref().unwrap_or("").trim().is_empty()
+                && !c.message.reasoning_content.as_deref().unwrap_or("").trim().is_empty()
+        });
+        if thought_only {
             return Err(LlmError::cut_off(truncate(&text, 500)));
         }
 
@@ -414,6 +424,11 @@ Raise LLM_RESERVE_TOKENS, or turn off the model's thinking mode.";
 #[derive(Deserialize)]
 struct ChatResponseMessage {
     content: Option<String>,
+    /// vLLM and friends hand a reasoning model's working out back in its own
+    /// field rather than inline in `content`. Never the answer — but when it is
+    /// the only thing present, the model spent the whole allowance thinking.
+    #[serde(default)]
+    reasoning_content: Option<String>,
 }
 
 fn truncate(s: &str, max: usize) -> String {

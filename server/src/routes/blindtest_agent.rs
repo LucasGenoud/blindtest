@@ -403,15 +403,18 @@ Someone asked for: \"{}\"
 
 Which of those categories could hold what they asked for? Judge by what the words mean: \
 \"drama series\" is tvshows, \"openings\" is animes, \"soundtracks\" could be games or movies. \
-Include a category whenever it might hold something relevant — including one costs nothing, \
-leaving out the right one ruins the answer. If the request is broad, vague, or you are unsure, \
-include them all.
+Name the FEWEST categories that cover the request. \"100 tv shows\" is tvshows alone; \"anime \
+openings\" is animes alone. Add a category only when the request genuinely reaches into it — \
+naming them all is the same as not answering, and leaves no room to work. Reserve that for a \
+request that really is about anything at all.
 
-Reply with one JSON object and nothing else: {{\"categories\": [\"tvshows\", \"animes\"]}}",
+Think briefly. Reply with one JSON object and nothing else: \
+{{\"categories\": [\"tvshows\", \"animes\"]}}",
         sanitize(prompt)
     );
 
-    let chosen = match cfg.chat(&[ChatMessage::user(ask)], cfg.reserve_tokens).await {
+    let room = cfg.context_tokens.saturating_sub(2_000).max(cfg.reserve_tokens);
+    let chosen = match cfg.chat(&[ChatMessage::user(ask)], room).await {
         Ok(raw) => extract_json(&raw)
             .and_then(|v| v.get("categories").cloned())
             .and_then(|v| v.as_array().cloned())
@@ -665,6 +668,12 @@ async fn run_stream(mut turn: Turn, db: web::Data<DbPool>, tx: tokio::sync::mpsc
             }
         };
         futures_util::pin_mut!(stream);
+
+        // Reasoning arrives in a field of its own that is not forwarded, so from
+        // here the model may be silent for minutes. Say what it is doing.
+        if tx.send(Ok(sse("thinking", serde_json::json!({})))).await.is_err() {
+            return;
+        }
 
         let mut raw = String::new();
         // How much of the reply the client already has. The model writes one JSON
