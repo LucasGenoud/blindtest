@@ -65,6 +65,7 @@ See `.env.example` for the full list. Key ones:
 | `LLM_BASE_URL`, `LLM_MODEL` | server (runtime) | OpenAI-compatible endpoint for the blindtest assistant. Both unset = feature disabled and hidden in the client. |
 | `LLM_API_KEY` | server (runtime) | Bearer token for that endpoint. Optional — local servers often need none. |
 | `LLM_CONTEXT_TOKENS` | server (runtime) | Context window the endpoint serves, not what the model claims (default 32768). The catalog is trimmed to fit it. |
+| `LLM_EXTRA_BODY` | server (runtime) | JSON object merged into every request body. Provider-specific switches, e.g. `{"chat_template_kwargs":{"enable_thinking":false}}` to stop a reasoning model thinking. |
 
 ## Server Quirks
 
