@@ -135,9 +135,13 @@ struct Turn {
     id: String,
     owner: String,
     prompt: String,
+    name: String,
     current: Vec<String>,
     catalog: Vec<CatalogEntry>,
+    history: Vec<ChatMessage>,
     messages: Vec<ChatMessage>,
+    /// Whether the model is seeing less than the whole playable library.
+    partial: bool,
     /// How much room the answer gets, worked out from what the prompt left over.
     max_output: usize,
 }
@@ -265,55 +269,100 @@ async fn focus(draft: Draft) -> Result<Turn, HttpResponse> {
         catalog
     } else {
         let wanted = choose_categories(&cfg, &catalog, &prompt, &current).await;
-        narrow(catalog, &wanted, budget)
+        narrow(catalog, &wanted)
     };
 
     let (catalog, dropped) = fit_to_budget(catalog, budget);
     if dropped > 0 {
-        log::warn!("Catalog trimmed by {} clip(s) after narrowing; {} offered", dropped, catalog.len());
+        log::warn!("Catalog trimmed by {} clip(s) to fit; {} offered", dropped, catalog.len());
     }
-    let _ = dropped;
     if catalog.is_empty() {
         return Err(HttpResponse::ServiceUnavailable()
             .json("The clip library does not fit this model's context window."));
     }
 
-    let by_id: std::collections::HashMap<&str, usize> = catalog
+    let mut turn = Turn {
+        cfg,
+        id,
+        owner,
+        prompt,
+        name,
+        current,
+        partial: catalog.len() < library_size,
+        catalog,
+        history,
+        messages: Vec::new(),
+        max_output: 0,
+    };
+    compose(&mut turn);
+    Ok(turn)
+}
+
+/// Build the prompt around whatever catalog the turn is holding, and work out how
+/// much room that leaves the answer.
+///
+/// Separate from `focus` so a turn can be composed again with fewer clips: when
+/// the model runs out of room, the recovery is to ask it a smaller question.
+fn compose(turn: &mut Turn) {
+    let by_id: std::collections::HashMap<&str, usize> = turn
+        .catalog
         .iter()
         .enumerate()
         .map(|(i, entry)| (entry.id.as_str(), i))
         .collect();
-    let opening = user_turn(&name, &current, &by_id, &catalog, &prompt);
-    let partial = catalog.len() < library_size;
+    let opening = user_turn(&turn.name, &turn.current, &by_id, &turn.catalog, &turn.prompt);
 
     let mut messages = vec![ChatMessage::system(system_prompt(
-        &category_breakdown(&catalog),
-        &catalog_lines(&catalog),
-        partial,
+        &category_breakdown(&turn.catalog),
+        &catalog_lines(&turn.catalog),
+        turn.partial,
     ))];
-    messages.extend(history);
+    messages.extend(turn.history.clone());
     messages.push(ChatMessage::user(opening));
 
-    // Whatever the window has left goes to the model, up to the configured cap.
-    // A fixed allowance was the other half of the overflow: too small and a
-    // thinking model is cut off mid-answer, too large and the request is refused.
+    // Everything the window has left goes to the answer. A fixed allowance was the
+    // other half of every overflow here: too small cuts a thinking model off
+    // mid-sentence, too large gets the whole request refused.
     let input: usize = messages.iter().map(|m| estimate_tokens(&m.content)).sum();
-    let max_output = cfg
+    turn.max_output = turn
+        .cfg
         .context_tokens
         .saturating_sub(input)
-        .saturating_sub(slack(cfg.context_tokens, messages.len()))
+        .saturating_sub(slack(turn.cfg.context_tokens, messages.len()))
         .saturating_sub(REPAIR_HEADROOM)
-        .min(cfg.reserve_tokens)
         .max(512);
+    turn.messages = messages;
 
     log::info!(
         "Blindtest assistant turn: {} clip(s) offered, ~{} input tokens, {} for the answer",
-        catalog.len(),
+        turn.catalog.len(),
         input,
-        max_output
+        turn.max_output
     );
+}
 
-    Ok(Turn { cfg, id, owner, prompt, current, catalog, messages, max_output })
+/// Ask a smaller question after the model ran out of room answering the big one.
+/// False when there is nothing further to cut.
+fn halve(turn: &mut Turn) -> bool {
+    let budget = estimate_tokens(&catalog_lines(&turn.catalog)) / 2;
+    if turn.catalog.len() <= 1 || budget == 0 {
+        return false;
+    }
+    let before = turn.catalog.len();
+    let (catalog, _) = fit_to_budget(std::mem::take(&mut turn.catalog), budget);
+    turn.catalog = catalog;
+    if turn.catalog.len() >= before {
+        return false;
+    }
+
+    log::warn!(
+        "Answer was cut off; retrying with {} clip(s) instead of {}",
+        turn.catalog.len(),
+        before
+    );
+    turn.partial = true;
+    compose(turn);
+    true
 }
 
 /// Ask which categories could hold what was asked for.
@@ -390,28 +439,18 @@ Reply with one JSON object and nothing else: {{\"categories\": [\"tvshows\", \"a
     wanted
 }
 
-/// Keep the wanted categories, then add the rest back while the budget allows.
-fn narrow(catalog: Vec<CatalogEntry>, wanted: &[String], budget: usize) -> Vec<CatalogEntry> {
-    let (mut kept, rest): (Vec<CatalogEntry>, Vec<CatalogEntry>) =
-        catalog.into_iter().partition(|e| wanted.contains(&e.category));
-
-    // Smallest first, so as many categories as possible come back whole.
-    let mut spare: std::collections::BTreeMap<String, Vec<CatalogEntry>> = Default::default();
-    for entry in rest {
-        spare.entry(entry.category.clone()).or_default().push(entry);
-    }
-    let mut groups: Vec<Vec<CatalogEntry>> = spare.into_values().collect();
-    groups.sort_by_key(|g| g.len());
-
-    let mut used = estimate_tokens(&catalog_lines(&kept));
-    for group in groups {
-        let cost = estimate_tokens(&catalog_lines(&group));
-        if used + cost <= budget {
-            used += cost;
-            kept.extend(group);
-        }
-    }
-
+/// Keep only the categories the brief could touch.
+///
+/// An earlier version added the rest of the library back whenever the budget
+/// allowed, so as not to put anything out of reach. With a model that reasons
+/// before answering that was self-defeating: 169 relevant clips became 1558, and
+/// the model spent its whole output allowance deliberating over the 1389 that had
+/// nothing to do with the request, then got cut off mid-answer. A short list is
+/// not a smaller library, it is a better question — and everything it saves goes
+/// to the answer instead.
+fn narrow(catalog: Vec<CatalogEntry>, wanted: &[String]) -> Vec<CatalogEntry> {
+    let mut kept: Vec<CatalogEntry> =
+        catalog.into_iter().filter(|e| wanted.contains(&e.category)).collect();
     kept.sort_by(|a, b| a.category.cmp(&b.category).then_with(|| a.answer.cmp(&b.answer)));
     kept
 }
@@ -535,6 +574,9 @@ pub async fn generate(
     let (reply, selection) = loop {
         let raw = match turn.cfg.chat(&turn.messages, turn.max_output).await {
             Ok(text) => text,
+            // Running out of room is recoverable: ask again with fewer clips to
+            // weigh up, which is both a shorter prompt and less to think about.
+            Err(e) if e.truncated && halve(&mut turn) => continue,
             Err(e) => {
                 log::error!("Blindtest assistant call failed: {}", e.detail);
                 return HttpResponse::BadGateway().json(e.public);
@@ -605,6 +647,7 @@ async fn run_stream(mut turn: Turn, db: web::Data<DbPool>, tx: tokio::sync::mpsc
     let (reply, selection) = loop {
         let stream = match turn.cfg.chat_stream(&turn.messages, turn.max_output).await {
             Ok(stream) => stream,
+            Err(e) if e.truncated && halve(&mut turn) => continue,
             Err(e) => {
                 log::error!("Blindtest assistant call failed: {}", e.detail);
                 let _ = tx.send(Ok(sse("error", serde_json::json!({"message": e.public})))).await;
@@ -617,10 +660,25 @@ async fn run_stream(mut turn: Turn, db: web::Data<DbPool>, tx: tokio::sync::mpsc
         // How much of the reply the client already has. The model writes one JSON
         // document, so the prose has to be picked out of it as it arrives.
         let mut sent = String::new();
+        let mut retry = false;
 
         while let Some(chunk) = stream.next().await {
             let text = match chunk {
                 Ok(text) => text,
+                Err(e) if e.truncated => {
+                    // Anything already shown belongs to an answer being abandoned.
+                    if !halve(&mut turn) {
+                        let _ = tx
+                            .send(Ok(sse("error", serde_json::json!({"message": e.public}))))
+                            .await;
+                        return;
+                    }
+                    if tx.send(Ok(sse("reset", serde_json::json!({})))).await.is_err() {
+                        return;
+                    }
+                    retry = true;
+                    break;
+                }
                 Err(e) => {
                     log::error!("Blindtest assistant stream failed: {}", e.detail);
                     let _ =
@@ -640,6 +698,10 @@ async fn run_stream(mut turn: Turn, db: web::Data<DbPool>, tx: tokio::sync::mpsc
                 return;
             }
             sent = prefix;
+        }
+
+        if retry {
+            continue;
         }
 
         match interpret(&raw, &turn.catalog, attempts_left > 0) {
@@ -1069,24 +1131,31 @@ mod tests {
     /// is there.
     #[test]
     fn the_wanted_category_survives_a_tight_budget() {
-        let kept = narrow(mixed(40), &["quotes".to_string()], 120);
+        let kept = narrow(mixed(40), &["quotes".to_string()]);
         assert!(kept.iter().all(|e| e.category == "quotes"), "an unwanted category crowded in");
         assert_eq!(kept.len(), 40, "the wanted category was not kept whole");
     }
 
     /// Nothing is put out of reach when there is room for it.
+    /// The saving is the point: an unrelated category must not ride along, or a
+    /// reasoning model spends its answer weighing up clips nobody asked for.
     #[test]
-    fn the_rest_of_the_library_comes_back_when_it_fits() {
-        let kept = narrow(mixed(40), &["quotes".to_string()], 100_000);
-        assert_eq!(kept.len(), 120);
-        for category in ["animes", "games", "quotes"] {
-            assert!(kept.iter().any(|e| e.category == category), "{category} never came back");
-        }
+    fn nothing_unrelated_rides_along() {
+        let kept = narrow(mixed(40), &["quotes".to_string()]);
+        assert_eq!(kept.len(), 40);
+        assert!(kept.iter().all(|e| e.category == "quotes"));
+    }
+
+    #[test]
+    fn several_wanted_categories_are_all_kept() {
+        let kept = narrow(mixed(10), &["quotes".to_string(), "games".to_string()]);
+        assert_eq!(kept.len(), 20);
+        assert!(kept.iter().all(|e| e.category != "animes"));
     }
 
     #[test]
     fn narrowing_leaves_the_catalog_grouped_by_category() {
-        let kept = narrow(mixed(10), &["games".to_string()], 100_000);
+        let kept = narrow(mixed(10), &["games".to_string(), "animes".to_string()]);
         let order: Vec<&str> = kept.iter().map(|e| e.category.as_str()).collect();
         let mut grouped = order.clone();
         grouped.dedup();

@@ -79,9 +79,11 @@ See `.env.example` for the full list. Key ones:
   model answers with catalog numbers, never titles, so a generated blindtest is always playable. One
   conversation thread per blindtest lives in `blindtest_agent_messages`. Rate limited to 30 prompts
   per account per hour. Runs in two passes when the library does not fit the window: a small call
-  picks which categories the brief could touch, then those clips (topped up with the rest while the
-  budget allows) go into the generation call. Any failure in the first pass falls back to offering
-  every category. `POST /streamblindtest/{id}` returns SSE and is what the client uses;
+  picks which categories the brief could touch, then only those clips go into the generation call —
+  a shorter list is also less for a reasoning model to deliberate over. Whatever the prompt does not
+  use is given to the answer, so a focused turn gets tens of thousands of output tokens. If the model
+  still runs out, the catalog is halved and the turn retried. Any failure in the first pass falls back
+  to offering every category. `POST /streamblindtest/{id}` returns SSE and is what the client uses;
   `POST /generateblindtest/{id}` does the same work in one response and is the fallback for proxies
   that buffer `text/event-stream`. Both share `prepare` / `interpret` / `persist`.
 

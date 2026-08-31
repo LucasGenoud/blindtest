@@ -64,11 +64,18 @@ pub struct LlmError {
     pub public: String,
     /// Logged only — may quote the provider's response.
     pub detail: String,
+    /// The answer was cut off by the output ceiling. Worth distinguishing: the
+    /// caller can make room and try again instead of giving up.
+    pub truncated: bool,
 }
 
 impl LlmError {
     fn new(public: &str, detail: impl Into<String>) -> Self {
-        LlmError { public: public.to_string(), detail: detail.into() }
+        LlmError { public: public.to_string(), detail: detail.into(), truncated: false }
+    }
+
+    fn cut_off(detail: impl Into<String>) -> Self {
+        LlmError { public: TRUNCATED.to_string(), detail: detail.into(), truncated: true }
     }
 }
 
@@ -179,7 +186,7 @@ impl LlmConfig {
 
         let choice = parsed.choices.into_iter().next();
         if choice.as_ref().and_then(|c| c.finish_reason.as_deref()) == Some("length") {
-            return Err(LlmError::new(TRUNCATED, truncate(&text, 500)));
+            return Err(LlmError::cut_off(truncate(&text, 500)));
         }
 
         choice
@@ -275,7 +282,7 @@ where
             if st.finished {
                 if st.truncated && !st.reported {
                     st.reported = true;
-                    return Some((Err(LlmError::new(TRUNCATED, "finish_reason=length")), st));
+                    return Some((Err(LlmError::cut_off("finish_reason=length")), st));
                 }
                 return None;
             }
