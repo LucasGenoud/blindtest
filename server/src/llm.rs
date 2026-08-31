@@ -25,10 +25,10 @@ pub struct LlmConfig {
     /// model supports: a vLLM or llama.cpp server started with a smaller
     /// `--max-model-len` will refuse a prompt the model itself could hold.
     pub context_tokens: usize,
-    /// Held back out of the window for the answer, and sent as `max_tokens`. The
-    /// answer itself is small — a sentence and a list of numbers, ~350 tokens — so
-    /// this is generous unless the model thinks out loud first, which on a narrow
-    /// window is better turned off than paid for.
+    /// The most output ever asked for. The answer proper is small — a sentence and
+    /// a list of numbers, ~350 tokens — but a model that thinks out loud spends
+    /// this before writing a word of it, so the default is roomy. What is actually
+    /// requested per call is whatever the window has left, up to this.
     pub reserve_tokens: usize,
     pub temperature: f32,
     /// Merged into every request body. The way to reach provider-specific
@@ -109,7 +109,7 @@ impl LlmConfig {
                 .unwrap_or(32_768),
             reserve_tokens: env_var("LLM_RESERVE_TOKENS")
                 .and_then(|v| v.parse::<usize>().ok())
-                .unwrap_or(1_500),
+                .unwrap_or(4_000),
             temperature: env_var("LLM_TEMPERATURE")
                 .and_then(|v| v.parse::<f32>().ok())
                 .unwrap_or(0.4),
@@ -127,12 +127,16 @@ impl LlmConfig {
     }
 
     /// Send one completion and return the assistant's raw text.
-    pub async fn chat(&self, messages: &[ChatMessage]) -> Result<String, LlmError> {
+    pub async fn chat(
+        &self,
+        messages: &[ChatMessage],
+        max_output: usize,
+    ) -> Result<String, LlmError> {
         let mut body = serde_json::json!({
             "model": self.model,
             "messages": messages,
             "temperature": self.temperature,
-            "max_tokens": self.reserve_tokens,
+            "max_tokens": max_output,
         });
         if self.json_mode {
             body["response_format"] = serde_json::json!({ "type": "json_object" });
@@ -191,12 +195,13 @@ impl LlmConfig {
     pub async fn chat_stream(
         &self,
         messages: &[ChatMessage],
+        max_output: usize,
     ) -> Result<impl futures_util::Stream<Item = Result<String, LlmError>>, LlmError> {
         let mut body = serde_json::json!({
             "model": self.model,
             "messages": messages,
             "temperature": self.temperature,
-            "max_tokens": self.reserve_tokens,
+            "max_tokens": max_output,
             "stream": true,
         });
         if self.json_mode {
