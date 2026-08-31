@@ -37,6 +37,12 @@ const MAX_PROMPT_CHARS: usize = 2000;
 /// this the retry is the request that overflows.
 const REPAIR_HEADROOM: usize = 768;
 
+/// How many times a turn may cut its own catalog in half after the model runs out
+/// of room. Bounded, because each halving both costs another call and quietly
+/// shrinks what the model can choose from: unbounded, a talkative model could
+/// whittle 152 clips down to a handful and then report that as the library.
+const HALVE_ATTEMPTS: usize = 2;
+
 /// What cannot be counted from the text alone.
 ///
 /// The chat template wraps every message in role markers and adds a BOS token, and
@@ -144,6 +150,8 @@ struct Turn {
     partial: bool,
     /// How much room the answer gets, worked out from what the prompt left over.
     max_output: usize,
+    /// How many times this turn has already halved its catalog.
+    halvings: usize,
 }
 
 /// The turn before the library has been narrowed to it. Split from `Turn` because
@@ -293,6 +301,7 @@ async fn focus(draft: Draft) -> Result<Turn, HttpResponse> {
         history,
         messages: Vec::new(),
         max_output: 0,
+        halvings: 0,
     };
     compose(&mut turn);
     Ok(turn)
@@ -345,7 +354,7 @@ fn compose(turn: &mut Turn) {
 /// False when there is nothing further to cut.
 fn halve(turn: &mut Turn) -> bool {
     let budget = estimate_tokens(&catalog_lines(&turn.catalog)) / 2;
-    if turn.catalog.len() <= 1 || budget == 0 {
+    if turn.halvings >= HALVE_ATTEMPTS || turn.catalog.len() <= 1 || budget == 0 {
         return false;
     }
     let before = turn.catalog.len();
@@ -360,6 +369,7 @@ fn halve(turn: &mut Turn) -> bool {
         turn.catalog.len(),
         before
     );
+    turn.halvings += 1;
     turn.partial = true;
     compose(turn);
     true
@@ -916,8 +926,10 @@ fn fit_to_budget(catalog: Vec<CatalogEntry>, budget: usize) -> (Vec<CatalogEntry
 
 fn system_prompt(breakdown: &str, lines: &str, trimmed: bool) -> String {
     let subset = if trimmed {
-        "\nThis is part of the library, not all of it: it was trimmed to fit. If the brief needs \
-         something you cannot find here, say so rather than forcing a poor match.\n"
+        "\nThis is a selection from the library, not the whole of it. If the brief needs more than \
+         is here, or something that is not here at all, say so plainly and return what genuinely \
+         fits — do not make up the difference with clips from elsewhere, and do not describe what \
+         you can see as the size of the library.\n"
     } else {
         ""
     };
@@ -948,8 +960,13 @@ prefer one you can actually place.
 RULES.
 - Answer with the COMPLETE list the blindtest should contain, not a diff. To add three tracks to a \
 list of ten, return all thirteen.
-- Give the exact number of tracks asked for. If there are not enough matching clips in the library, \
-return as many as genuinely fit and say so plainly in your reply.
+- Give the number of tracks asked for when the catalog can supply them.
+- NEVER pad the list with something that was not asked for. If the brief wants 100 tv shows and the \
+catalog holds 76, return those 76 and say so — a list padded to the number with clips from another \
+category is worse than a short one, because the person asked for the category, not the number.
+- What follows is the part of the library picked out for this request, not the whole of it. When it \
+cannot supply what was asked for, say \"I could only find N in what I was given\" — never state a \
+count as the size of the library, because you cannot see the rest of it.
 - No duplicates. Vary the titles: do not stack six clips from one franchise unless that is the brief.
 - Respect the categories asked for. When none are named, choose whatever fits the theme.
 - Order the list the way it should be played: open with something recognisable, keep the hardest for \
