@@ -775,8 +775,9 @@ fn owns_blindtest(conn: &rusqlite::Connection, id: &str, owner: &str) -> bool {
     .is_ok()
 }
 
-/// The catalog is the playable pool and nothing else: clips still processing or
-/// flagged by a person are never offered, because the player would skip them.
+/// The catalog is the playable pool and nothing else: superfluous clips, clips still
+/// processing, or clips flagged by a person are never offered, because the player
+/// would skip them.
 ///
 /// Presented grouped by category, alphabetical within each. A brief usually names a
 /// category and then something finer than the library records — "drama series", not
@@ -790,6 +791,7 @@ fn load_catalog(conn: &rusqlite::Connection, limit: usize) -> Vec<CatalogEntry> 
         "SELECT id, answer, category, count FROM (
             SELECT id, answer, category, count FROM audios
             WHERE processing_status = 'ready'
+              AND superflus = 0
               AND id NOT IN (SELECT DISTINCT audio_id FROM flagged_audios WHERE auto = 0)
             ORDER BY count DESC LIMIT ?1
          ) ORDER BY category, answer",
@@ -1086,9 +1088,36 @@ fn repair_turn(rejected: &[String], catalog_len: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        catalog_lines, estimate_tokens, fit_to_budget, narrow, repair_turn, resolve, sanitize,
-        CatalogEntry,
+        catalog_lines, estimate_tokens, fit_to_budget, load_catalog, narrow, repair_turn, resolve,
+        sanitize, CatalogEntry,
     };
+
+    #[test]
+    fn assistant_catalog_excludes_superfluous_audio() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE audios (
+                id TEXT PRIMARY KEY,
+                answer TEXT NOT NULL,
+                category TEXT NOT NULL,
+                count INTEGER NOT NULL,
+                processing_status TEXT NOT NULL,
+                superflus INTEGER NOT NULL
+             );
+             CREATE TABLE flagged_audios (
+                audio_id TEXT NOT NULL,
+                auto INTEGER NOT NULL
+             );
+             INSERT INTO audios VALUES
+                ('regular', 'Regular track', 'music', 2, 'ready', 0),
+                ('superfluous', 'Superfluous track', 'music', 3, 'ready', 1);",
+        )
+        .unwrap();
+
+        let entries = load_catalog(&conn, 100);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].id, "regular");
+    }
 
     fn catalog() -> Vec<CatalogEntry> {
         (1..=3)
