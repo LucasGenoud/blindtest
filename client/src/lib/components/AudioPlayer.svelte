@@ -214,12 +214,62 @@
     } else if ($currentAudioNumber < totalAudios) {
       playAudio();
     } else {
+      celebrateFinish();
       stopBlindtest();
-      const confInterval = setInterval(() => {
-        confetti({ particleCount: 100, origin: { x: Math.random(), y: Math.random() - 0.2 }, startVelocity: 30, spread: 360 });
-      }, 100);
-      setTimeout(() => clearInterval(confInterval), 5000);
     }
+  }
+
+  // Make the finish feel like a billion pieces of confetti without actually asking
+  // the browser to render a billion particles. Several differently shaped waves
+  // create the density, and canvas-confetti disables them for reduced-motion users.
+  function celebrateFinish() {
+    const colors = ['#ff4d6d', '#ffca3a', '#8ac926', '#00bbf9', '#9b5de5', '#ffffff'];
+    const common = { colors, zIndex: 9999, disableForReducedMotion: true };
+
+    confetti({
+      ...common,
+      particleCount: 350,
+      spread: 160,
+      startVelocity: 65,
+      gravity: 0.8,
+      scalar: 1.15,
+      origin: { x: 0.5, y: 0.7 },
+    });
+
+    let cannonShots = 0;
+    const cannons = setInterval(() => {
+      const left = cannonShots % 2 === 0;
+      confetti({
+        ...common,
+        particleCount: 90,
+        angle: left ? 60 : 120,
+        spread: 65,
+        startVelocity: 58,
+        origin: { x: left ? 0 : 1, y: 0.85 },
+      });
+      cannonShots++;
+      if (cannonShots >= 20) clearInterval(cannons);
+    }, 180);
+
+    let fireworks = 0;
+    const fireworkShow = setInterval(() => {
+      confetti({
+        ...common,
+        particleCount: 130,
+        spread: 360,
+        startVelocity: 32,
+        ticks: 90,
+        gravity: 0.65,
+        origin: { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.35 },
+      });
+      fireworks++;
+      if (fireworks >= 9) clearInterval(fireworkShow);
+    }, 520);
+
+    setTimeout(() => {
+      confetti({ ...common, particleCount: 300, spread: 180, startVelocity: 75, origin: { x: 0.25, y: 0.55 } });
+      confetti({ ...common, particleCount: 300, spread: 180, startVelocity: 75, origin: { x: 0.75, y: 0.55 } });
+    }, 4700);
   }
 
   function pauseBlindtest() { stopTimer(); $blindtestStatus = 'paused'; if (player) player.pause(); }
