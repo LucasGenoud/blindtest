@@ -29,9 +29,13 @@
     </button>
   {/each}
   {#if counts.flagged > 0}
-    <div class="stat-chip flag-chip">
+    <button
+      class="stat-chip flag-chip {status === 'flagged' ? 'active' : ''}"
+      aria-pressed={status === 'flagged'}
+      onclick={() => (status = status === 'flagged' ? 'all' : 'flagged')}
+    >
       <Flag size={16} stroke-width={2} /> Flagged <strong class="tabular">{counts.flagged}</strong>
-    </div>
+    </button>
   {/if}
 
   <select class="filter-select" bind:value={category} aria-label="Category">
@@ -109,7 +113,9 @@
 
   .stat-chip strong { font-weight: 700; }
 
-  .flag-chip { cursor: default; color: var(--red); }
+  .flag-chip { color: var(--red); }
+
+  .flag-chip.active { color: var(--red); border-bottom-color: var(--red); }
 
   .flag-chip strong { color: var(--red); }
 

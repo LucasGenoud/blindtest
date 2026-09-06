@@ -19,7 +19,8 @@ export function matchesSearch(audio, search) {
 export function filterAudios(audios, { search, status, category, superflus }) {
   return audios.filter((a) => {
     if (!matchesSearch(a, search)) return false;
-    if (status !== 'all' && a.processingStatus !== status) return false;
+    if (status === 'flagged' && !a.flagged?.length) return false;
+    if (status !== 'all' && status !== 'flagged' && a.processingStatus !== status) return false;
     if (category !== 'all' && a.category !== category) return false;
     if (superflus === 'yes' && !a.superflus) return false;
     if (superflus === 'no' && a.superflus) return false;
