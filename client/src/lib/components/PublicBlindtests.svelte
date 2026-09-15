@@ -45,8 +45,8 @@
           </div>
           <span class="item-user">{bt.username || 'Unknown'}</span>
           <div class="item-actions">
-            <button class="btn-secondary sm" onclick={() => play(bt)}>Play</button>
-            <button class="btn-ghost sm" onclick={() => play(bt, true)}>Shuffle</button>
+            <button class="btn-secondary sm" disabled={!bt.blindtestList.length} onclick={() => play(bt)}>Play</button>
+            <button class="btn-ghost sm" disabled={!bt.blindtestList.length} onclick={() => play(bt, true)}>Shuffle</button>
           </div>
         </div>
       {/each}

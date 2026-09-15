@@ -6,9 +6,10 @@
   let { audio = $bindable(), onsave, onclose } = $props();
 </script>
 
-<div class="overlay" in:fade={{ duration: 150 }}
-     onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="popup edit-popup" in:fly={{ y: 20, duration: 200 }}>
+<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
+
+<div class="overlay" in:fade={{ duration: 150 }}>
+  <div class="popup edit-popup" role="dialog" aria-modal="true" aria-label="Edit audio" in:fly={{ y: 20, duration: 200 }}>
     <div class="popup-header">
       <span class="popup-title">Edit audio</span>
       <button class="close-btn" onclick={onclose} aria-label="Close"><X size={14} stroke-width={1.8} /></button>

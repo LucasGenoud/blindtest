@@ -1,7 +1,7 @@
-use actix_web::{web, HttpResponse};
-use serde::Deserialize;
 use crate::db::{lock_db, DbPool};
 use crate::middleware::AuthState;
+use actix_web::{web, HttpResponse};
+use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct SigninBody {
@@ -16,6 +16,18 @@ pub struct SignupBody {
     pub name: String,
 }
 
+fn valid_email(email: &str) -> bool {
+    let Some((local, domain)) = email.split_once('@') else {
+        return false;
+    };
+    !local.is_empty()
+        && domain.contains('.')
+        && !domain.starts_with('.')
+        && !domain.ends_with('.')
+        && email.len() <= 254
+        && !email.chars().any(|c| c.is_whitespace() || c.is_control())
+}
+
 pub async fn signin(
     body: web::Json<SigninBody>,
     db: web::Data<DbPool>,
@@ -27,7 +39,7 @@ pub async fn signin(
         let db = lock_db(&db);
         db.query_row(
             "SELECT id, email, name, password, role, deleted FROM users WHERE LOWER(email) = LOWER(?1)",
-            [&body.email],
+            [body.email.trim()],
             |row| {
                 Ok((
                     row.get::<_, String>(0)?,
@@ -51,20 +63,18 @@ pub async fn signin(
             let password = body.password.clone();
             let verified = web::block(move || bcrypt::verify(&password, &hash)).await;
             match verified {
-                Ok(Ok(true)) => {
-                    match auth.create_token(&id, &email, &name, &role) {
-                        Ok(token) => HttpResponse::Ok().json(serde_json::json!({
-                            "token": token,
-                            "user": {
-                                "_id": id,
-                                "email": email,
-                                "name": name,
-                                "role": role,
-                            }
-                        })),
-                        Err(_) => HttpResponse::InternalServerError().json("Token creation failed"),
-                    }
-                }
+                Ok(Ok(true)) => match auth.create_token(&id, &email, &name, &role) {
+                    Ok(token) => HttpResponse::Ok().json(serde_json::json!({
+                        "token": token,
+                        "user": {
+                            "_id": id,
+                            "email": email,
+                            "name": name,
+                            "role": role,
+                        }
+                    })),
+                    Err(_) => HttpResponse::InternalServerError().json("Token creation failed"),
+                },
                 _ => HttpResponse::Unauthorized().json("Invalid credentials"),
             }
         }
@@ -72,15 +82,17 @@ pub async fn signin(
     }
 }
 
-pub async fn signup(
-    body: web::Json<SignupBody>,
-    db: web::Data<DbPool>,
-) -> HttpResponse {
-    if body.password.len() < 6 {
-        return HttpResponse::BadRequest().json("Password must be at least 6 characters");
+pub async fn signup(body: web::Json<SignupBody>, db: web::Data<DbPool>) -> HttpResponse {
+    let email = body.email.trim().to_lowercase();
+    let name = body.name.trim();
+    if !valid_email(&email) {
+        return HttpResponse::BadRequest().json("Invalid email address");
     }
-    if body.name.is_empty() {
-        return HttpResponse::BadRequest().json("Name is required");
+    if body.password.len() < 6 || body.password.len() > 72 {
+        return HttpResponse::BadRequest().json("Password must be between 6 and 72 bytes");
+    }
+    if name.is_empty() || name.len() > 64 || name.chars().any(char::is_control) {
+        return HttpResponse::BadRequest().json("Name must be between 1 and 64 characters");
     }
 
     let password = body.password.clone();
@@ -95,7 +107,7 @@ pub async fn signup(
     let db = lock_db(&db);
     let result = db.execute(
         "INSERT INTO users (id, email, name, password, role, register_date) VALUES (?1, ?2, ?3, ?4, 'user', ?5)",
-        rusqlite::params![id, body.email.to_lowercase(), body.name, hash, now],
+        rusqlite::params![id, email, name, hash, now],
     );
 
     match result {
@@ -108,5 +120,18 @@ pub async fn signup(
                 HttpResponse::InternalServerError().json(msg)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::valid_email;
+
+    #[test]
+    fn validates_email_at_the_server_boundary() {
+        assert!(valid_email("person@example.com"));
+        assert!(!valid_email("not-an-email"));
+        assert!(!valid_email("a@localhost"));
+        assert!(!valid_email("a b@example.com"));
     }
 }

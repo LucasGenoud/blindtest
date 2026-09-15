@@ -4,22 +4,33 @@
   import { userPermission } from '$lib/stores/userStore.js';
 
   let users = $state([]);
+  let error = $state('');
 
   onMount(async () => {
     users = await apiTry(api.get('/getusers'), []);
   });
 
   async function changeRole(userId, newRole) {
-    await apiTry(api.post('/updateuser', { id: userId, role: newRole }));
-    const i = users.findIndex(u => u._id === userId);
-    if (i >= 0) users[i].role = newRole;
+    error = '';
+    try {
+      await api.post('/updateuser', { id: userId, role: newRole });
+      const i = users.findIndex(u => u._id === userId);
+      if (i >= 0) users[i].role = newRole;
+    } catch (e) {
+      error = e.message || 'Could not update the user.';
+    }
     users = [...users];
   }
 
   async function deleteUser(userId) {
     if (!confirm('Delete this user?')) return;
-    await apiTry(api.del(`/deleteuser?id=${encodeURIComponent(userId)}`));
-    users = users.filter(u => u._id !== userId);
+    error = '';
+    try {
+      await api.del(`/deleteuser?id=${encodeURIComponent(userId)}`);
+      users = users.filter(u => u._id !== userId);
+    } catch (e) {
+      error = e.message || 'Could not delete the user.';
+    }
   }
 </script>
 
@@ -29,6 +40,7 @@
   <div class="page-header">
     <h1>Manage Users</h1>
   </div>
+  {#if error}<p class="field-error" role="alert">{error}</p>{/if}
   <table>
     <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Registered</th><th>Actions</th></tr></thead>
     <tbody>

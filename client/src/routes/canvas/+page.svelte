@@ -16,6 +16,7 @@
   import { Paintbrush } from 'lucide-svelte';
 
   let paintConfirm = $state(null);
+  let canvasError = $state('');
   let paintConfirmTimer;
 
   const SIZE = 1000;
@@ -55,12 +56,11 @@
     imageData = ctx.createImageData(SIZE, SIZE);
 
     try {
-      const data = await apiTry(api.get('/getCanvas'));
-      if (data) {
-        pixelData = data;
-        drawCanvas();
-      }
-    } catch {}
+      pixelData = await api.get('/getCanvas');
+      drawCanvas();
+    } catch (e) {
+      canvasError = e.message || 'Could not load the canvas.';
+    }
 
     centerCanvas();
   });
@@ -80,7 +80,8 @@
   }
 
   function onWsMessage(e) {
-    const msg = JSON.parse(e.data);
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
     if (msg.type === 'updatePixel') {
       const { selectedPixel, selectedColor: sc } = msg.data;
       const hex = sc.hex || 'ffffff';
@@ -172,18 +173,14 @@
     dragging = false;
   }
 
-  function placePixel(x, y) {
+  async function placePixel(x, y) {
     if (!$token) return;
     if (x < 0 || x >= SIZE || y < 0 || y >= SIZE) return;
 
     playPaint();
 
-    // Optimistic: the pixel is drawn below regardless, and the broadcast corrects it.
-    apiTry(api.post('/updatePixel', {
-      pixel: { selectedPixel: { x, y }, selectedColor },
-    }));
-
     const idx = y * SIZE + x;
+    const previous = pixelData[idx];
     pixelData[idx] = selectedColor.hex;
     setPixelColor(x, y, selectedColor.hex);
     ctx.putImageData(imageData, 0, 0);
@@ -191,6 +188,19 @@
     paintConfirm = { x, y, hex: selectedColor.hex };
     if (paintConfirmTimer) clearTimeout(paintConfirmTimer);
     paintConfirmTimer = setTimeout(() => paintConfirm = null, 600);
+
+    canvasError = '';
+    try {
+      await api.post('/updatePixel', {
+        pixel: { selectedPixel: { x, y }, selectedColor },
+      });
+    } catch (e) {
+      pixelData[idx] = previous;
+      setPixelColor(x, y, previous);
+      ctx.putImageData(imageData, 0, 0);
+      paintConfirm = null;
+      canvasError = e.message || 'Could not place the pixel.';
+    }
   }
 
   function handleClick(e) {
@@ -350,17 +360,21 @@
   let gridSize = $derived(zoom);
 </script>
 
-<svelte:window onkeydown={handleKeyDown} />
 <svelte:head><title>Community Canvas — Blindtest</title></svelte:head>
 
-<div class="canvas-page"
-  oncontextmenu={(e) => e.preventDefault()}
->
+<div class="canvas-page">
   <PalettePicker bind:selected={selectedColor} />
+  {#if canvasError}<p class="field-error" role="alert">{canvasError}</p>{/if}
 
   <!-- Canvas viewport -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (custom canvas has keyboard controls and application semantics) -->
   <div class="canvas-viewport"
+    role="application"
+    aria-label="Community pixel canvas"
+    tabindex="0"
     bind:this={viewportEl}
+    onkeydown={handleKeyDown}
+    oncontextmenu={(e) => e.preventDefault()}
     onwheel={handleWheel}
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}

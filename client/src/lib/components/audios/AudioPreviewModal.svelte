@@ -6,9 +6,10 @@
   let { audio, onclose } = $props();
 </script>
 
-<div class="overlay" in:fade={{ duration: 150 }}
-     onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="popup preview-popup" in:fly={{ y: 20, duration: 200 }}>
+<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
+
+<div class="overlay" in:fade={{ duration: 150 }}>
+  <div class="popup preview-popup" role="dialog" aria-modal="true" aria-label="Audio preview" in:fly={{ y: 20, duration: 200 }}>
     <div class="popup-header">
       <div class="preview-title-group">
         <span class="cat-badge">{audio.category}</span>

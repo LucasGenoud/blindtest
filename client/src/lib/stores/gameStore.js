@@ -1,10 +1,6 @@
 import { writable } from "svelte/store";
 
-export const blindtestStatus = writable(
-  typeof localStorage !== "undefined"
-    ? localStorage.getItem("blindtestStatus") || "stopped"
-    : "stopped",
-); // stopped, started, paused
+export const blindtestStatus = writable("stopped"); // stopped, started, paused
 export const volume = writable(
   typeof localStorage !== "undefined"
     ? parseInt(localStorage.getItem("volume") || "50")
@@ -32,16 +28,17 @@ export const dataCategories = writable({
   quotes: 0,
 });
 
+export function resetBlindtestState() {
+  blindtestStatus.set("stopped");
+  currentAudioData.set(null);
+  currentAudioNumber.set(0);
+  showAnswer.set(false);
+  disabledUsers.set([]);
+}
+
 // Persist volume
 volume.subscribe((val) => {
   if (typeof localStorage !== "undefined") {
     localStorage.setItem("volume", String(val));
-  }
-});
-
-// Persist blindtestStatus
-blindtestStatus.subscribe((val) => {
-  if (typeof localStorage !== "undefined") {
-    localStorage.setItem("blindtestStatus", val);
   }
 });

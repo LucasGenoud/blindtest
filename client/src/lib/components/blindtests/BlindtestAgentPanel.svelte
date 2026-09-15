@@ -122,9 +122,13 @@
 
   async function clearThread() {
     if (!confirm('Clear this conversation? The track list stays as it is.')) return;
-    await apiTry(api.del(`/clearblindtestagentmessages/${blindtestId}`));
-    messages = [];
     error = '';
+    try {
+      await api.del(`/clearblindtestagentmessages/${blindtestId}`);
+      messages = [];
+    } catch (e) {
+      error = e.message || 'Could not clear the conversation.';
+    }
   }
 
   function useExample(text) {

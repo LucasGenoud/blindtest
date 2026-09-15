@@ -1,5 +1,5 @@
-use actix_web::{web, HttpResponse};
 use crate::db::{lock_db, DbPool};
+use actix_web::{web, HttpResponse};
 
 type StatsResult = Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -9,15 +9,14 @@ fn grouped(
     key: &str,
 ) -> Result<Vec<serde_json::Value>, rusqlite::Error> {
     let mut stmt = conn.prepare(sql)?;
-    let rows: Vec<serde_json::Value> = stmt
+    let rows = stmt
         .query_map([], |row| {
             Ok(serde_json::json!({
                 key: row.get::<_, String>(0)?,
                 "count": row.get::<_, i64>(1)?,
             }))
         })?
-        .filter_map(|r| r.ok())
-        .collect();
+        .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(rows)
 }
 

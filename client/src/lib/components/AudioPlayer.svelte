@@ -2,10 +2,10 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { api, apiTry, getApi } from '$lib/api.js';
-  import { getVideoId, categoryListValueLabel } from '$lib/misc.js';
+  import { categoryListValueLabel } from '$lib/misc.js';
+  import { allocateCategories } from '$lib/gameOrder.js';
   import { token, userPermission } from '$lib/stores/userStore.js';
-  import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume } from '$lib/stores/gameStore.js';
-  import confetti from 'canvas-confetti';
+  import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume, resetBlindtestState } from '$lib/stores/gameStore.js';
   import { Pause, Play, ExternalLink, Flag, Volume2, VolumeX } from 'lucide-svelte';
 
   let { blindtestId = null, randomOrder = false } = $props();
@@ -22,9 +22,15 @@
   let reportMessage = $state('');
   let customBlindtest = $state(null);
   let currentAnswer = $state('');
+  let answerToken = $state('');
   let loadFailures = $state(0);
   let loadError = $state('');
   let timer;
+  let timerDeadline = 0;
+  let phaseRemaining = 0;
+  let retryTimer;
+  let requestGeneration = 0;
+  let sourceGeneration = 0;
   let player;
 
   // Stop chasing audios once the server has failed this many times in a row, instead
@@ -34,18 +40,27 @@
   // Initialize game
   onMount(() => {
     if ($blindtestStatus !== 'started') { goto('/'); return; }
+    $currentAudioData = null;
+    $currentAudioNumber = 0;
+    $showAnswer = false;
     initGame();
   });
 
   onDestroy(() => {
+    requestGeneration++;
+    sourceGeneration++;
     stopTimer();
+    clearTimeout(retryTimer);
     if (player) { player.pause(); player.src = ""; player.load(); }
+    resetBlindtestState();
   });
 
   async function initGame() {
+    const initRequest = ++requestGeneration;
     if (blindtestId) {
       // Private blindtests are owner-only, so this needs the token the client adds.
       customBlindtest = await apiTry(api.get(`/getcustomblindtest/${blindtestId}`));
+      if (initRequest !== requestGeneration) return;
       if (!customBlindtest) {
         loadError = 'This blindtest could not be loaded.';
         videoBuffering = false;
@@ -56,52 +71,53 @@
     } else {
       buildCategoryOrder();
     }
+    if (!totalAudios) {
+      videoBuffering = false;
+      loadError = 'This blindtest has no playable clips.';
+      return;
+    }
     playAudio();
   }
 
   function buildCategoryOrder() {
-    let total = 0;
-    const cats = [];
-    Object.keys($dataCategories).forEach(c => { total += $dataCategories[c]; if ($dataCategories[c] > 0) cats.push(c); });
-    const order = [];
-    Object.keys($dataCategories).forEach(c => {
-      const pct = ($dataCategories[c] / total) * 100;
-      const n = Math.floor($numberOfAudios * pct / 100);
-      for (let i = 0; i < n; i++) order.push(c);
-    });
-    while (order.length < $numberOfAudios && cats.length) {
-      order.push(cats[Math.floor(Math.random() * cats.length)]);
-    }
+    const order = allocateCategories($dataCategories, $numberOfAudios);
     shuffleArray(order);
     predefinedCategoryOrder = order;
     totalAudios = order.length;
   }
 
   async function playAudio() {
+    if ($currentAudioNumber >= totalAudios) { stopBlindtest(); return; }
+    clearTimeout(retryTimer);
+    stopTimer();
+    videoBuffering = true;
+    const request = ++requestGeneration;
+    const index = $currentAudioNumber;
     let params = {};
     if (customBlindtest) {
-      params = { audioId: customBlindtest.blindtestList[$currentAudioNumber] };
+      params = { audioId: customBlindtest.blindtestList[index] };
     } else {
       params = {
-        category: predefinedCategoryOrder[$currentAudioNumber] || '',
+        category: predefinedCategoryOrder[index] || '',
         passedAudiosIds: JSON.stringify(passedAudiosIds),
         useSuperflus: String($useSuperflus),
         prioritizeLessUsedAudios: String($prioritizeLessUsedAudios),
         disabledUsers: JSON.stringify($disabledUsers),
       };
     }
+    params.revealAfter = String($timeToGuess);
     const qs = new URLSearchParams(params).toString();
     try {
       // The token identifies who is playing.
       const data = await api.get(`/getnextaudio?${qs}`);
+      if (request !== requestGeneration) return;
 
-      videoBuffering = true;
-      loadFailures = 0;
       loadError = '';
-      $currentAudioNumber++;
+      $currentAudioNumber = index + 1;
       audioFlagged = false;
       $showAnswer = false;
       currentAnswer = '';
+      answerToken = data.answerToken;
 
       videoId = data.videoData._id;
       $currentAudioData = data.videoData;
@@ -111,20 +127,23 @@
       preciseCountDown = $timeToGuess;
 
     } catch (e) {
-      failedToLoad();
+      if (request === requestGeneration) failedToLoad(true);
     }
   }
 
   /// Skip to the next audio after a failure, but give up rather than looping forever
   /// when the server itself is unavailable.
-  function failedToLoad() {
+  function failedToLoad(advance) {
+    requestGeneration++;
+    sourceGeneration++;
     stopTimer();
     loadFailures++;
-    $currentAudioNumber++;
+    if (advance) $currentAudioNumber++;
 
     if (loadFailures >= MAX_CONSECUTIVE_FAILURES) {
       videoBuffering = false;
-      loadError = 'Could not reach the server. The blindtest has been stopped.';
+      loadError = 'No playable clips could be loaded.';
+      $blindtestStatus = 'paused';
       return;
     }
     if ($currentAudioNumber >= totalAudios) {
@@ -132,19 +151,19 @@
       return;
     }
     videoBuffering = true;
-    setTimeout(playAudio, 2000);
+    retryTimer = setTimeout(playAudio, 2000);
   }
 
   /// The answer is not part of the audio payload — it would be readable in the
   /// network tab before anyone had guessed — so it is fetched at reveal time.
-  async function fetchAnswer(id) {
+  async function fetchAnswer(id, revealToken) {
     // Leave the answer blank rather than breaking the reveal.
-    const data = await apiTry(api.get(`/getaudioanswer?audioId=${encodeURIComponent(id)}`));
+    const data = await apiTry(api.get(`/getaudioanswer?token=${encodeURIComponent(revealToken)}`));
     if (data && videoId === id) currentAnswer = data.answer ?? '';
   }
 
   $effect(() => {
-    if ($showAnswer && videoId && !currentAnswer) fetchAnswer(videoId);
+    if ($showAnswer && videoId && answerToken && !currentAnswer) fetchAnswer(videoId, answerToken);
   });
 
   // Loads the clip when the round changes. Keep this effect's dependencies to
@@ -154,47 +173,70 @@
   });
 
   function loadVideo() {
-    player.src = `${getApi()}/media/${videoId}`;
-    player.load();
+    const source = ++sourceGeneration;
+    let started = false;
     // Do not read $volume here. This runs inside the effect below, and Svelte
     // tracks reads made by anything an effect calls, so touching the volume store
     // would make it a dependency: changing the volume would reload the clip and
     // restart the countdown. The element keeps its volume across a src change,
     // and the dedicated effect below owns it.
 
-    player.oncanplay = () => {
-      videoBuffering = false;
-      player.play().catch(e => console.error('Autoplay prevented', e));
-      startCountdown();
+    player.oncanplay = async () => {
+      if (source !== sourceGeneration || started) return;
+      started = true;
+      phaseRemaining = $timeToGuess;
+      try {
+        await player.play();
+        if (source !== sourceGeneration) return;
+        loadFailures = 0;
+        videoBuffering = false;
+        startCountdown(phaseRemaining);
+      } catch {
+        started = false;
+        videoBuffering = false;
+        loadError = 'Playback was blocked. Press Resume to continue.';
+        $blindtestStatus = 'paused';
+      }
     };
 
-    player.onended = () => {
+    player.onended = async () => {
+      if (source !== sourceGeneration) return;
       player.currentTime = 0;
-      player.play();
+      try {
+        await player.play();
+      } catch {
+        pauseBlindtest();
+        loadError = 'Playback stopped. Press Resume to continue.';
+      }
     };
 
     player.onerror = () => {
+      if (source !== sourceGeneration) return;
+      sourceGeneration++;
       if ($token) {
         // Recorded for contributors to review, but marked automatic: an automatic
         // flag no longer removes the audio from everyone else's rotation, so a bad
         // stretch of server trouble cannot quietly empty the pool.
         flagAudio(true);
       }
-      failedToLoad();
+      failedToLoad(false);
     };
+
+    player.src = `${getApi()}/media/${videoId}`;
+    player.load();
   }
 
-  function startCountdown() {
+  function startCountdown(duration = $showAnswer ? $timeWithAnswer : $timeToGuess) {
     stopTimer();
-    const startTime = Date.now();
-    const target = $showAnswer ? $timeWithAnswer : $timeToGuess;
+    phaseRemaining = duration;
+    timerDeadline = Date.now() + duration * 1000;
     timer = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000;
+      phaseRemaining = Math.max(0, (timerDeadline - Date.now()) / 1000);
       if (!$showAnswer) {
-        preciseCountDown = Math.max(0, $timeToGuess - elapsed);
+        preciseCountDown = phaseRemaining;
         countDown = Math.ceil(preciseCountDown);
       }
-      if (elapsed >= target) timerEnded();
+      if (phaseRemaining <= 0) timerEnded();
     }, 100);
   }
 
@@ -208,109 +250,91 @@
       $showAnswer = true;
       countDown = $timeToGuess;
       preciseCountDown = $timeToGuess;
-      startCountdown();
+      startCountdown($timeWithAnswer);
     } else if ($currentAudioNumber < totalAudios) {
       playAudio();
     } else {
-      celebrateFinish();
       stopBlindtest();
     }
   }
 
-  // Make the finish feel like a billion pieces of confetti without actually asking
-  // the browser to render a billion particles. Several differently shaped waves
-  // create the density, and canvas-confetti disables them for reduced-motion users.
-  function celebrateFinish() {
-    const colors = ['#ff4d6d', '#ffca3a', '#8ac926', '#00bbf9', '#9b5de5', '#ffffff'];
-    const common = { colors, zIndex: 9999, disableForReducedMotion: true };
-
-    confetti({
-      ...common,
-      particleCount: 350,
-      spread: 160,
-      startVelocity: 65,
-      gravity: 0.8,
-      scalar: 1.15,
-      origin: { x: 0.5, y: 0.7 },
-    });
-
-    let cannonShots = 0;
-    const cannons = setInterval(() => {
-      const left = cannonShots % 2 === 0;
-      confetti({
-        ...common,
-        particleCount: 90,
-        angle: left ? 60 : 120,
-        spread: 65,
-        startVelocity: 58,
-        origin: { x: left ? 0 : 1, y: 0.85 },
-      });
-      cannonShots++;
-      if (cannonShots >= 20) clearInterval(cannons);
-    }, 180);
-
-    let fireworks = 0;
-    const fireworkShow = setInterval(() => {
-      confetti({
-        ...common,
-        particleCount: 130,
-        spread: 360,
-        startVelocity: 32,
-        ticks: 90,
-        gravity: 0.65,
-        origin: { x: 0.1 + Math.random() * 0.8, y: 0.1 + Math.random() * 0.35 },
-      });
-      fireworks++;
-      if (fireworks >= 9) clearInterval(fireworkShow);
-    }, 520);
-
-    setTimeout(() => {
-      confetti({ ...common, particleCount: 300, spread: 180, startVelocity: 75, origin: { x: 0.25, y: 0.55 } });
-      confetti({ ...common, particleCount: 300, spread: 180, startVelocity: 75, origin: { x: 0.75, y: 0.55 } });
-    }, 4700);
+  function pauseBlindtest() {
+    if (timer) phaseRemaining = Math.max(0, (timerDeadline - Date.now()) / 1000);
+    stopTimer();
+    $blindtestStatus = 'paused';
+    if (player) player.pause();
   }
-
-  function pauseBlindtest() { stopTimer(); $blindtestStatus = 'paused'; if (player) player.pause(); }
-  function resumeBlindtest() { $blindtestStatus = 'started'; if (player) player.play(); startCountdown(); }
+  async function resumeBlindtest() {
+    if (!player) return;
+    try {
+      await player.play();
+      loadError = '';
+      $blindtestStatus = 'started';
+      startCountdown(phaseRemaining || ($showAnswer ? $timeWithAnswer : $timeToGuess));
+    } catch {
+      loadError = 'Playback could not start.';
+    }
+  }
   function skipAudio() { stopTimer(); playAudio(); }
-  function revealAnswer() { stopTimer(); $showAnswer = true; startCountdown(); }
 
   function stopBlindtest() {
+    requestGeneration++;
+    sourceGeneration++;
+    clearTimeout(retryTimer);
     stopTimer();
-    $currentAudioData = null; $currentAudioNumber = 0; $showAnswer = false;
-    $blindtestStatus = 'stopped'; $disabledUsers = [];
+    resetBlindtestState();
     videoId = null;
-    if (player) { player.pause(); player.src = ""; player.load(); }
+    if (player) {
+      player.oncanplay = null;
+      player.onended = null;
+      player.onerror = null;
+      player.pause();
+      player.src = "";
+      player.load();
+    }
     goto('/');
   }
 
   async function flagAudio(auto = false) {
-    audioFlagged = true;
     const message = auto ? 'Automatic report for broken audio' : reportMessage;
-    // A failed report should not strand the player on the current audio.
-    await apiTry(api.post('/flagaudio', { audio: $currentAudioData, reportMessage: message, auto }));
-    reportMessage = '';
-    // The automatic path is driven by failedToLoad(); only a manual flag skips here.
-    if (!auto) {
-      stopTimer();
-      playAudio();
+    const audio = $currentAudioData;
+    if (auto) {
+      try { await api.post('/flagaudio', { audio, reportMessage: message, auto: true }); } catch {}
+      return;
+    }
+    audioFlagged = true;
+    try {
+      await api.post('/flagaudio', { audio, reportMessage: message, auto: false });
+      reportMessage = '';
+      // The automatic path is driven by failedToLoad(); only a manual flag skips here.
+      if (!auto) {
+        stopTimer();
+        playAudio();
+      }
+    } catch (e) {
+      audioFlagged = false;
+      if (!auto) loadError = e.message || 'Could not report the audio.';
     }
   }
 
   function openYoutube() {
     if (player && $currentAudioData) {
       const t = Math.round(player.currentTime || 0);
-      window.open(`${$currentAudioData.videoUrl}&t=${t}`, '_blank');
-      pauseBlindtest();
+      try {
+        const url = new URL($currentAudioData.videoUrl);
+        url.searchParams.set('t', String(t));
+        window.open(url.toString(), '_blank', 'noopener');
+        pauseBlindtest();
+      } catch {
+        loadError = 'The source URL is invalid.';
+      }
     }
   }
 
   function shuffleArray(arr) {
-    for (let r = 0; r < 3; r++) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
   }
 
@@ -397,9 +421,9 @@
        carries a word. -->
   <div class="control-bar">
     <div class="control-group">
-      {#if $blindtestStatus === 'started'}
+      {#if !loadError && $blindtestStatus === 'started'}
         <button class="btn-circle" title="Pause" aria-label="Pause" onclick={pauseBlindtest}><Pause size={16} stroke-width={2} /></button>
-      {:else if $blindtestStatus === 'paused'}
+      {:else if !loadError && $blindtestStatus === 'paused'}
         <button class="btn-circle" title="Resume" aria-label="Resume" onclick={resumeBlindtest}><Play size={16} stroke-width={2} /></button>
       {/if}
 
@@ -413,9 +437,8 @@
         </button>
         <input type="range" min="0" max="100" bind:value={$volume} aria-label="Volume" />
       </div>
-      <button class="btn-secondary" disabled={$showAnswer} onclick={revealAnswer}>Reveal answer</button>
       {#if $currentAudioNumber < totalAudios}
-        <button class="btn-secondary" onclick={skipAudio}>Skip clip</button>
+        <button class="btn-secondary" disabled={videoBuffering} onclick={skipAudio}>Skip clip</button>
       {/if}
       <button class="btn-secondary" onclick={openYoutube}>
         <ExternalLink size={16} stroke-width={2} /> Open source

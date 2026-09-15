@@ -4,14 +4,20 @@ import subprocess
 import boto3
 import tempfile
 import uuid
+from pathlib import Path
+import ipaddress
+import socket
+from urllib.parse import urlparse
 
 # Configuration
-DB_PATH = "server/data/blindtest.db"
-S3_ENDPOINT = os.environ.get("S3_ENDPOINT", "http://localhost:8333")
-S3_ACCESS_KEY = os.environ.get("SEAWEEDFS_ACCESS_KEY", "admin")
-S3_SECRET_KEY = os.environ.get("SEAWEEDFS_SECRET_KEY", "gerg2323df23fs")
-S3_BUCKET = os.environ.get("SEAWEEDFS_DEFAULT_BUCKET", "blindtest-audios")
-S3_REGION = os.environ.get("S3_REGION", "us-east-1")
+ROOT = Path(__file__).resolve().parent
+DB_PATH = ROOT / "server/data/blindtest.db"
+COOKIES_PATH = ROOT / "server/cookies.txt"
+S3_ENDPOINT = os.environ.get("SERVER_S3_ENDPOINT", os.environ.get("S3_ENDPOINT", "http://localhost:8333"))
+S3_ACCESS_KEY = os.environ.get("SERVER_S3_ACCESS_KEY", os.environ.get("S3_ACCESS_KEY", "admin"))
+S3_SECRET_KEY = os.environ.get("SERVER_S3_SECRET_KEY", os.environ.get("S3_SECRET_KEY", "gerg2323df23fs"))
+S3_BUCKET = os.environ.get("SERVER_S3_BUCKET", os.environ.get("S3_BUCKET", "blindtest-audios"))
+S3_REGION = os.environ.get("SERVER_S3_REGION", os.environ.get("S3_REGION", "us-east-1"))
 
 s3 = boto3.client(
     's3',
@@ -20,6 +26,16 @@ s3 = boto3.client(
     aws_secret_access_key=S3_SECRET_KEY,
     region_name=S3_REGION
 )
+
+def public_video_url(value):
+    try:
+        parsed = urlparse(value)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password:
+            return False
+        addresses = {info[4][0] for info in socket.getaddrinfo(parsed.hostname, parsed.port or 443)}
+        return bool(addresses) and all(ipaddress.ip_address(address).is_global for address in addresses)
+    except (OSError, ValueError):
+        return False
 
 # Ensure bucket exists
 try:
@@ -38,6 +54,11 @@ def process_video(conn, table_name, row):
         return
 
     print(f"Processing {video_id} from {table_name}...")
+    if not public_video_url(video_url):
+        conn.execute(f"UPDATE {table_name} SET processing_status = 'error' WHERE id = ?", (video_id,))
+        conn.commit()
+        print(f"Refusing non-public URL for {video_id}.")
+        return
     start_time = start_time or 0
     end_time = start_time + 150  # 2.5 mins
     temp_id = str(uuid.uuid4())
@@ -52,22 +73,19 @@ def process_video(conn, table_name, row):
         # 1. Download at 720p
         dl_cmd = [
             "yt-dlp",
-            "--cookies", "cookies.txt",
+            "--cookies", str(COOKIES_PATH),
             "-f", "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][ext=mp4]/best[height<=720]",
             "--download-sections", f"*{start_time}-{end_time}",
             "--force-keyframes-at-cuts",
+            "--no-playlist",
             "-o", dl_path,
+            "--",
             video_url
         ]
         res = subprocess.run(dl_cmd, capture_output=True, text=True)
         if res.returncode != 0 or not os.path.exists(dl_path):
             print(f"Failed to download {video_id}: {res.stderr}")
             conn.execute(f"UPDATE {table_name} SET processing_status = 'error' WHERE id = ?", (video_id,))
-            # Flag the audio since the original video could not be downloaded
-            conn.execute(
-                "INSERT OR IGNORE INTO flagged_audios (id, audio_id, user_id, report_message, date) VALUES (?, ?, ?, ?, datetime('now'))",
-                (f"{video_id}-migration", video_id, "migration", "Original video failed to download")
-            )
             conn.commit()
             return
 
@@ -104,6 +122,7 @@ def main():
         return
 
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
     tables = ["audios", "suggestions"]
 
     for table in tables:

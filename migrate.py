@@ -2,6 +2,9 @@ import json
 import sqlite3
 import datetime
 import os
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
 
 def dt_to_iso(ts):
     if not ts: return None
@@ -15,7 +18,17 @@ def dt_to_iso(ts):
 def init_db(db_path):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
-    conn.executescript(open("server/migrations/001_init.sql", encoding="utf-8").read())
+    migrations = ROOT / "server" / "migrations"
+    conn.executescript((migrations / "001_init.sql").read_text(encoding="utf-8"))
+    for migration in sorted(migrations.glob("*.sql"))[1:]:
+        for statement in migration.read_text(encoding="utf-8").split(";"):
+            if not statement.strip():
+                continue
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as error:
+                if not any(text in str(error) for text in ("duplicate column", "no such column", "no such table")):
+                    raise
     # init canvas with ffffff
     count = conn.execute("SELECT COUNT(*) FROM canvas_pixels").fetchone()[0]
     if count == 0:
@@ -29,18 +42,19 @@ def init_db(db_path):
     conn.close()
 
 def main():
-    db_path = "server/data/blindtest.db"
+    db_path = ROOT / "server/data/blindtest.db"
     if not os.path.exists(db_path):
         print(f"DB not found at {db_path}. Initializing...")
-        init_db(db_path)
+    init_db(db_path)
 
     conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
     cur = conn.cursor()
 
     # 1. users
     print("Migrating users...")
     try:
-        users = json.load(open('restore/users.json', encoding='utf-8'))
+        users = json.loads((ROOT / 'restore/users.json').read_text(encoding='utf-8'))
         for u in users:
             cur.execute("""
                 INSERT OR REPLACE INTO users (
@@ -58,7 +72,7 @@ def main():
     # 2. audios
     print("Migrating audios...")
     try:
-        audios = json.load(open('restore/audios.json', encoding='utf-8'))
+        audios = json.loads((ROOT / 'restore/audios.json').read_text(encoding='utf-8'))
         for a in audios:
             cur.execute("""
                 INSERT OR REPLACE INTO audios (
@@ -100,7 +114,7 @@ def main():
     # 3. custom_blindtests
     print("Migrating custom blindtests...")
     try:
-        cbs = json.load(open('restore/customBlindtests.json', encoding='utf-8'))
+        cbs = json.loads((ROOT / 'restore/customBlindtests.json').read_text(encoding='utf-8'))
         for cb in cbs:
             cur.execute("""
                 INSERT OR REPLACE INTO custom_blindtests (
@@ -119,7 +133,7 @@ def main():
     # 5. suggestions
     print("Migrating suggestions...")
     try:
-        suggestions = json.load(open('restore/suggestions.json', encoding='utf-8'))
+        suggestions = json.loads((ROOT / 'restore/suggestions.json').read_text(encoding='utf-8'))
         for s in suggestions:
             cur.execute("""
                 INSERT OR REPLACE INTO suggestions (
@@ -139,7 +153,7 @@ def main():
     # 6. stats
     print("Migrating stats...")
     try:
-        stats = json.load(open('restore/stats.json', encoding='utf-8'))
+        stats = json.loads((ROOT / 'restore/stats.json').read_text(encoding='utf-8'))
         for s in stats:
             meta = {k: v for k, v in s.items() if k not in ('_id', 'category', 'user', 'date')}
             cur.execute("""
@@ -158,10 +172,10 @@ def main():
     # 7. canvas pixels
     print("Migrating canvas...")
     try:
-        canvas = json.load(open('restore/canvas.json', encoding='utf-8'))
+        canvas = json.loads((ROOT / 'restore/canvas.json').read_text(encoding='utf-8'))
         updates = []
         if isinstance(canvas, list):
-            for item in canvas:
+            for idx, item in enumerate(canvas):
                 if isinstance(item, dict):
                     for k, v in item.items():
                         if isinstance(v, dict) and v.get('c') and v.get('c') != 'ffffff':
@@ -171,7 +185,6 @@ def main():
                             updates.append((v.get('c'), v.get('u'), dt_to_iso(v.get('d')), x, y))
                 elif isinstance(item, str) and item != 'ffffff':
                     # Flat array of hex strings if it ever existed
-                    idx = canvas.index(item)
                     x = idx % 1000
                     y = idx // 1000
                     updates.append((item, None, None, x, y))

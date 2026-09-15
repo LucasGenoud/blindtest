@@ -43,7 +43,9 @@ async fn main() -> std::io::Result<()> {
                 cors = cors.allowed_origin(url.trim());
             }
         } else {
-            cors = cors.allow_any_origin();
+            cors = cors
+                .allowed_origin("http://localhost:3000")
+                .allowed_origin("http://127.0.0.1:3000");
         }
 
         App::new()
@@ -75,7 +77,6 @@ async fn main() -> std::io::Result<()> {
             .route("/resetflag", web::post().to(routes::audios::reset_flag))
             .route("/deleteaudio", web::delete().to(routes::audios::delete_audio))
             .route("/backupaudio", web::get().to(routes::audios::backup_audios))
-            .route("/testanswer", web::post().to(routes::audios::test_answer))
             // Custom blindtests
             .route("/createcustomblindtest", web::post().to(routes::custom_blindtests::create))
             .route("/getcustomblindtests", web::get().to(routes::custom_blindtests::get_user_blindtests))

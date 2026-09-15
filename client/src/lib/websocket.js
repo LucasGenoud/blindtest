@@ -8,6 +8,7 @@ let retries = 0;
 let retryTimer = null;
 let activeToken = null;
 let wanted = false;
+let connectionGeneration = 0;
 
 /**
  * One connection attempt. The previous version polled `readyState` every 10 ms and
@@ -53,11 +54,20 @@ function scheduleReconnect() {
  * dead until the page was reloaded, silently killing chat and canvas updates.
  */
 export async function connectWebSocket(token) {
+  const generation = ++connectionGeneration;
   activeToken = token;
   wanted = true;
   clearTimeout(retryTimer);
 
+  const previous = get(websocket);
+  websocket.set(null);
+  if (previous) previous.close();
   const socket = await openSocket(token);
+  if (generation !== connectionGeneration || !wanted) {
+    socket.close();
+    throw new Error('WebSocket connection superseded');
+  }
+  clearTimeout(retryTimer);
   retries = 0;
   websocket.set(socket);
 
@@ -72,7 +82,9 @@ export async function connectWebSocket(token) {
 }
 
 export function disconnectWebSocket() {
+  connectionGeneration++;
   wanted = false;
+  activeToken = null;
   clearTimeout(retryTimer);
   const socket = get(websocket);
   websocket.set(null);

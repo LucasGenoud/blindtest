@@ -3,6 +3,7 @@
   import { websocket } from '$lib/stores/websocketStore.js';
   import { api } from '$lib/api.js';
   import { connectWebSocket } from '$lib/websocket.js';
+  import { X } from 'lucide-svelte';
 
   let { onclose } = $props();
   let mode = $state('signin');
@@ -48,8 +49,11 @@
   }
 </script>
 
-<div class="popup-overlay" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="popup-box">
+<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
+
+<div class="popup-overlay">
+  <div class="popup-box" role="dialog" aria-modal="true" aria-label="Account">
+    <button class="btn-circle absolute right-2 top-2 z-10" onclick={onclose} aria-label="Close"><X size={16} /></button>
     <div class="tabs">
       <button class="tab" class:active={mode === 'signin'} onclick={() => mode = 'signin'}>Sign in</button>
       <button class="tab" class:active={mode === 'signup'} onclick={() => mode = 'signup'}>Sign up</button>

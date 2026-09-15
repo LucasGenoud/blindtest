@@ -20,6 +20,7 @@
 
   let audios = $state([]);
   let loading = $state(true);
+  let error = $state('');
 
   let search = $state('');
   let filterStatus = $state('all');
@@ -62,38 +63,59 @@
 
   async function load() {
     loading = true;
-    audios = await apiTry(api.get('/getallaudios'), []);
-    loading = false;
+    error = '';
+    try {
+      audios = await api.get('/getallaudios');
+    } catch (e) {
+      error = e.message || 'Could not load the audio library.';
+    } finally {
+      loading = false;
+    }
   }
 
   async function addAudio() {
     if (!newAudio.answer || !newAudio.videoUrl) return;
-    await apiTry(api.post('/newaudio', newAudio));
-    showAddForm = false;
-    newAudio = { ...EMPTY_AUDIO };
-    await load();
+    error = '';
+    try {
+      await api.post('/newaudio', newAudio);
+      showAddForm = false;
+      newAudio = { ...EMPTY_AUDIO };
+      await load();
+    } catch (e) { error = e.message || 'Could not add the audio.'; }
   }
 
   async function saveEdit() {
-    await apiTry(api.post('/updateaudio', editAudio));
-    editAudio = null;
-    await load();
+    error = '';
+    try {
+      await api.post('/updateaudio', editAudio);
+      editAudio = null;
+      await load();
+    } catch (e) { error = e.message || 'Could not update the audio.'; }
   }
 
   async function deleteAudio(id) {
     if (!confirm('Delete this audio?')) return;
-    await apiTry(api.del(`/deleteaudio?id=${encodeURIComponent(id)}`));
-    await load();
+    error = '';
+    try {
+      await api.del(`/deleteaudio?id=${encodeURIComponent(id)}`);
+      await load();
+    } catch (e) { error = e.message || 'Could not delete the audio.'; }
   }
 
   async function reprocessAudio(id) {
-    await apiTry(api.post(`/reprocessaudio?audioId=${encodeURIComponent(id)}`));
-    await load();
+    error = '';
+    try {
+      await api.post(`/reprocessaudio?audioId=${encodeURIComponent(id)}`);
+      await load();
+    } catch (e) { error = e.message || 'Could not reprocess the audio.'; }
   }
 
   async function resetFlag(id) {
-    await apiTry(api.post('/resetflag', { audioId: id }));
-    await load();
+    error = '';
+    try {
+      await api.post('/resetflag', { audioId: id });
+      await load();
+    } catch (e) { error = e.message || 'Could not reset the report.'; }
   }
 
   async function downloadBackup() {
@@ -127,6 +149,7 @@
       {/if}
     </div>
   </div>
+  {#if error}<p class="field-error" role="alert">{error}</p>{/if}
 
   <AudioFilters
     {counts}

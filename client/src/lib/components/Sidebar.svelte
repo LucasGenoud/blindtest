@@ -49,6 +49,7 @@
   }
 
   function startBlindtest() {
+    $numberOfAudios = Math.max(1, Math.floor(Number($numberOfAudios) || 1));
     $blindtestStatus = 'started';
     goto('/play');
   }
@@ -65,7 +66,7 @@
     <div class="section-label">Configuration</div>
 
     <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Number of guesses</div>
-    <input type="number" min="10" bind:value={$numberOfAudios} style="width:120px" />
+    <input type="number" min="1" bind:value={$numberOfAudios} style="width:120px" />
 
     <div class="mt-6 flex items-center text-xs font-semibold uppercase tracking-[0.1em] text-text-secondary first:mt-0">Time to guess: <span class="ml-1 font-bold text-accent-ink">{$timeToGuess}s</span></div>
     <input type="range" min="5" max="30" bind:value={$timeToGuess} />

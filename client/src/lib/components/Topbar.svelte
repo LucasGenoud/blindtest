@@ -6,6 +6,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import LoginPopup from '$lib/components/login/LoginPopup.svelte';
+  import { disconnectWebSocket } from '$lib/websocket.js';
   import { Volume2, LogOut, Sun, Moon } from 'lucide-svelte';
 
   let showLogin = $state(false);
@@ -20,6 +21,7 @@
   }
 
   function logOut() {
+    disconnectWebSocket();
     $token = '';
     $user = null;
     showProfile = false;

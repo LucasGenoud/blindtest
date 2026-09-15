@@ -9,7 +9,6 @@ use crate::middleware::AuthState;
 pub struct WsBroadcaster {
     tx: broadcast::Sender<String>,
 }
-
 impl WsBroadcaster {
     pub fn new() -> Arc<Self> {
         let (tx, _) = broadcast::channel(1024);
@@ -95,19 +94,16 @@ pub async fn ws_handler(
                 Message::Text(text) => {
                     if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                         let msg_type = parsed.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                        match msg_type {
-                            "userPosition" => {
-                                let broadcast_msg = serde_json::json!({
-                                    "type": "userPosition",
-                                    "user": {
-                                        "wsId": ws_id_clone,
-                                        "username": username,
-                                    },
-                                    "data": parsed.get("data"),
-                                });
-                                broadcaster_for_recv.broadcast(&broadcast_msg.to_string());
-                            }
-                            _ => {}
+                        if msg_type == "userPosition" {
+                            let broadcast_msg = serde_json::json!({
+                                "type": "userPosition",
+                                "user": {
+                                    "wsId": ws_id_clone,
+                                    "username": username,
+                                },
+                                "data": parsed.get("data"),
+                            });
+                            broadcaster_for_recv.broadcast(&broadcast_msg.to_string());
                         }
                     }
                 }

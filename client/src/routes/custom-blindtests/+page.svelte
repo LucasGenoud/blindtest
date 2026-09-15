@@ -8,6 +8,7 @@
 
   let blindtests = $state([]);
   let agent = $state({ enabled: false, model: '' });
+  let error = $state('');
 
   onMount(async () => {
     if (!$token) { goto('/'); return; }
@@ -21,15 +22,24 @@
   async function create(mode = 'library') {
     const name = prompt('Enter blindtest name:');
     if (!name) return;
-    const created = await apiTry(api.post('/createcustomblindtest', { name }));
-    if (!created) return;
-    goto(`/custom-blindtests/${created._id}${mode === 'assistant' ? '?mode=assistant' : ''}`);
+    error = '';
+    try {
+      const created = await api.post('/createcustomblindtest', { name });
+      goto(`/custom-blindtests/${created._id}${mode === 'assistant' ? '?mode=assistant' : ''}`);
+    } catch (e) {
+      error = e.message || 'Could not create the blindtest.';
+    }
   }
 
   async function deleteBt(id) {
     if (!confirm('Delete this blindtest?')) return;
-    await apiTry(api.del(`/deletecustomblindtest/${id}`));
-    blindtests = blindtests.filter(b => b._id !== id);
+    error = '';
+    try {
+      await api.del(`/deletecustomblindtest/${id}`);
+      blindtests = blindtests.filter(b => b._id !== id);
+    } catch (e) {
+      error = e.message || 'Could not delete the blindtest.';
+    }
   }
 </script>
 
@@ -47,6 +57,7 @@
       <button class="btn-primary" onclick={() => create('library')}><Plus size={14} stroke-width={1.8} /> Create</button>
     </div>
   </div>
+  {#if error}<p class="field-error" role="alert">{error}</p>{/if}
 
   {#if blindtests.length === 0}
     <div class="empty-state">

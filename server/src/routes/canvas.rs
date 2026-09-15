@@ -1,8 +1,9 @@
+use crate::db::{lock_db, DbPool};
+use crate::db_try;
+use crate::middleware::Authed;
+use crate::ws::WsBroadcaster;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
-use crate::db::{lock_db, DbPool};
-use crate::middleware::{Authed};
-use crate::ws::WsBroadcaster;
 use std::sync::{Arc, Mutex};
 
 /// The canvas body is a million pixels: roughly half a second of SQLite scan plus
@@ -25,7 +26,10 @@ impl CanvasCache {
     }
 
     fn get(&self) -> Option<web::Bytes> {
-        self.encoded.lock().unwrap_or_else(|p| p.into_inner()).clone()
+        self.encoded
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone()
     }
 
     fn store(&self, body: web::Bytes) {
@@ -77,38 +81,40 @@ fn encode_canvas(
     let mut stmt = conn.prepare("SELECT color FROM canvas_pixels ORDER BY y, x")?;
     let pixels: Vec<String> = stmt
         .query_map([], |row| row.get::<_, String>(0))?
-        .filter_map(|r| r.ok())
-        .collect();
+        .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(serde_json::to_vec(&pixels)?)
 }
 
-pub async fn get_canvas(
-    db: web::Data<DbPool>,
-    cache: web::Data<Arc<CanvasCache>>,
-) -> HttpResponse {
+pub async fn get_canvas(db: web::Data<DbPool>, cache: web::Data<Arc<CanvasCache>>) -> HttpResponse {
     if let Some(body) = cache.get() {
-        return HttpResponse::Ok().content_type("application/json").body(body);
+        return HttpResponse::Ok()
+            .content_type("application/json")
+            .body(body);
     }
 
     // Only one request rebuilds; the rest wait here and take the result.
     let _rebuilding = cache.rebuild.lock().await;
     if let Some(body) = cache.get() {
-        return HttpResponse::Ok().content_type("application/json").body(body);
+        return HttpResponse::Ok()
+            .content_type("application/json")
+            .body(body);
     }
 
     let pool = db.get_ref().clone();
-    let built = web::block(move || -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
-        // Prefer a private read-only connection so the scan does not hold the shared
-        // one; fall back to it only if the side connection cannot be opened.
-        match crate::db::open_read_only() {
-            Ok(conn) => encode_canvas(&conn),
-            Err(e) => {
-                log::warn!("Canvas falling back to the shared connection: {}", e);
-                let conn = lock_db(&pool);
-                encode_canvas(&conn)
+    let built = web::block(
+        move || -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+            // Prefer a private read-only connection so the scan does not hold the shared
+            // one; fall back to it only if the side connection cannot be opened.
+            match crate::db::open_read_only() {
+                Ok(conn) => encode_canvas(&conn),
+                Err(e) => {
+                    log::warn!("Canvas falling back to the shared connection: {}", e);
+                    let conn = lock_db(&pool);
+                    encode_canvas(&conn)
+                }
             }
-        }
-    })
+        },
+    )
     .await;
 
     let bytes = match built {
@@ -124,13 +130,12 @@ pub async fn get_canvas(
     };
 
     cache.store(bytes.clone());
-    HttpResponse::Ok().content_type("application/json").body(bytes)
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(bytes)
 }
 
-pub async fn get_pixel_data(
-    query: web::Query<PixelQuery>,
-    db: web::Data<DbPool>,
-) -> HttpResponse {
+pub async fn get_pixel_data(query: web::Query<PixelQuery>, db: web::Data<DbPool>) -> HttpResponse {
     // Parse pixel coordinates from JSON query param
     let pixel: PixelCoord = match &query.pixel {
         Some(s) => match serde_json::from_str(s) {
@@ -182,7 +187,7 @@ pub async fn update_pixel(
     let x = body.pixel.selected_pixel.x;
     let y = body.pixel.selected_pixel.y;
 
-    if x < 0 || x >= 1000 || y < 0 || y >= 1000 {
+    if !(0..1000).contains(&x) || !(0..1000).contains(&y) {
         return HttpResponse::BadRequest().json("Pixel out of bounds");
     }
 
@@ -201,18 +206,23 @@ pub async fn update_pixel(
     let now = chrono::Utc::now().to_rfc3339();
     let db = lock_db(&db);
 
-    let _ = db.execute(
+    let tx = db_try!(db.unchecked_transaction());
+    let changed = db_try!(tx.execute(
         "UPDATE canvas_pixels SET color = ?1, user_id = ?2, updated_at = ?3 WHERE x = ?4 AND y = ?5",
         rusqlite::params![hex, claims.sub, now, x, y],
-    );
+    ));
+    if changed != 1 {
+        return HttpResponse::NotFound().json("Pixel not found");
+    }
 
     // Log stat
     let stat_id = uuid::Uuid::new_v4().to_string();
-    let _ = db.execute(
+    db_try!(tx.execute(
         "INSERT INTO stats (id, category, user_id, date, metadata) VALUES (?1, 'pixel', ?2, ?3, ?4)",
         rusqlite::params![stat_id, claims.sub, now,
             serde_json::json!({"x": x, "y": y, "color": hex}).to_string()],
-    );
+    ));
+    db_try!(tx.commit());
 
     drop(db);
     cache.invalidate();
@@ -222,7 +232,7 @@ pub async fn update_pixel(
         "type": "updatePixel",
         "data": {
             "selectedPixel": {"x": x, "y": y},
-            "selectedColor": body.pixel.selected_color,
+            "selectedColor": {"hex": hex},
         }
     });
     broadcaster.broadcast(&msg.to_string());

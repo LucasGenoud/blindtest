@@ -102,7 +102,7 @@ pub async fn get_messages(
         "SELECT id, role, content, tracks, created_at FROM blindtest_agent_messages
          WHERE blindtest_id = ?1 ORDER BY created_at, rowid"
     ));
-    let items: Vec<serde_json::Value> = db_try!(stmt.query_map([&id], |row| {
+    let rows = db_try!(stmt.query_map([&id], |row| {
         let tracks: String = row.get(3)?;
         Ok(serde_json::json!({
             "_id": row.get::<_, String>(0)?,
@@ -111,9 +111,8 @@ pub async fn get_messages(
             "tracks": serde_json::from_str::<Vec<String>>(&tracks).unwrap_or_default(),
             "createdAt": row.get::<_, String>(4)?,
         }))
-    }))
-    .filter_map(|r| r.ok())
-    .collect();
+    }));
+    let items = db_try!(rows.collect::<rusqlite::Result<Vec<_>>>());
 
     HttpResponse::Ok().json(items)
 }
@@ -129,7 +128,7 @@ pub async fn clear_messages(
     if !owns_blindtest(&db, &id, &user.0.sub) {
         return HttpResponse::NotFound().json("Not found");
     }
-    let _ = db.execute("DELETE FROM blindtest_agent_messages WHERE blindtest_id = ?1", [&id]);
+    db_try!(db.execute("DELETE FROM blindtest_agent_messages WHERE blindtest_id = ?1", [&id]));
 
     HttpResponse::Ok().json("Cleared")
 }
@@ -799,16 +798,20 @@ fn load_catalog(conn: &rusqlite::Connection, limit: usize) -> Vec<CatalogEntry> 
         return Vec::new();
     };
 
-    stmt.query_map([limit as i64], |row| {
+    match stmt.query_map([limit as i64], |row| {
         Ok(CatalogEntry {
             id: row.get(0)?,
             answer: row.get(1)?,
             category: row.get(2)?,
             plays: row.get(3)?,
         })
-    })
-    .map(|rows| rows.filter_map(|r| r.ok()).collect())
-    .unwrap_or_default()
+    }).and_then(|rows| rows.collect()) {
+        Ok(rows) => rows,
+        Err(e) => {
+            log::error!("Failed to load assistant catalog: {}", e);
+            Vec::new()
+        }
+    }
 }
 
 fn load_history(conn: &rusqlite::Connection, blindtest_id: &str) -> Vec<ChatMessage> {
@@ -819,7 +822,7 @@ fn load_history(conn: &rusqlite::Connection, blindtest_id: &str) -> Vec<ChatMess
         return Vec::new();
     };
 
-    let mut rows: Vec<ChatMessage> = stmt
+    let mut rows: Vec<ChatMessage> = match stmt
         .query_map(rusqlite::params![blindtest_id, HISTORY_TURNS as i64], |row| {
             let role: String = row.get(0)?;
             let content: String = row.get(1)?;
@@ -832,8 +835,13 @@ fn load_history(conn: &rusqlite::Connection, blindtest_id: &str) -> Vec<ChatMess
                 ChatMessage::user(content)
             })
         })
-        .map(|r| r.filter_map(|m| m.ok()).collect())
-        .unwrap_or_default();
+        .and_then(|rows| rows.collect()) {
+            Ok(rows) => rows,
+            Err(e) => {
+                log::error!("Failed to load assistant history: {}", e);
+                Vec::new()
+            }
+        };
 
     rows.reverse();
     rows

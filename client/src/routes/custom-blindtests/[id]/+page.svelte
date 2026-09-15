@@ -13,6 +13,9 @@
   let search = $state('');
   let filterCat = $state('');
   let saving = $state(false);
+  let saveError = $state('');
+  let savedList = [];
+  let saveRevision = 0;
   let agent = $state({ enabled: false, model: '' });
   /** 'library' picks tracks by hand, 'assistant' asks the model for them. */
   let mode = $state($page.url.searchParams.get('mode') === 'assistant' ? 'assistant' : 'library');
@@ -24,6 +27,7 @@
       apiTry(api.get('/getaudiosnames'), []),
       apiTry(api.get('/getblindtestagentstatus'), { enabled: false, model: '' }),
     ]);
+    savedList = [...(blindtest?.blindtestList || [])];
     // Arriving with ?mode=assistant on a server with no model configured would
     // otherwise show an empty half.
     if (!agent.enabled) mode = 'library';
@@ -62,9 +66,19 @@
 
   async function save() {
     if (!blindtest) return;
+    const revision = ++saveRevision;
+    const list = [...blindtest.blindtestList];
     saving = true;
-    await apiTry(api.post(`/updatecustomblindtest/${blindtest._id}`, { blindtestList: blindtest.blindtestList }));
-    saving = false;
+    saveError = '';
+    try {
+      await api.post(`/updatecustomblindtest/${blindtest._id}`, { blindtestList: list });
+      if (revision === saveRevision) savedList = list;
+    } catch (e) {
+      if (revision === saveRevision) blindtest.blindtestList = [...savedList];
+      saveError = e.message || 'Could not save the track list.';
+    } finally {
+      if (revision === saveRevision) saving = false;
+    }
   }
 
   /** The assistant writes the list server-side, so this only catches the view up. */
@@ -73,8 +87,15 @@
   }
 
   async function togglePublic() {
-    blindtest.public = !blindtest.public;
-    await apiTry(api.post(`/updatecustomblindtest/${blindtest._id}`, { public: blindtest.public }));
+    const previous = blindtest.public;
+    blindtest.public = !previous;
+    saveError = '';
+    try {
+      await api.post(`/updatecustomblindtest/${blindtest._id}`, { public: blindtest.public });
+    } catch (e) {
+      blindtest.public = previous;
+      saveError = e.message || 'Could not change visibility.';
+    }
   }
 </script>
 
@@ -88,6 +109,7 @@
         <h2>{blindtest.name}</h2>
         <div class="header-right">
           {#if saving}<span class="save-indicator">Saving...</span>{/if}
+          {#if saveError}<span class="field-error" role="alert">{saveError}</span>{/if}
           {#if agent.enabled}
             <div class="mode-switch" role="group" aria-label="How tracks are chosen">
               <button class="mode" class:active={mode === 'library'} onclick={() => (mode = 'library')}>Library</button>
@@ -124,11 +146,11 @@
           </div>
           <div class="pool-list">
             {#each filteredPool().slice(0, 200) as audio (audio._id)}
-              <div class="pool-item" onclick={() => addAudio(audio._id)}>
+              <button type="button" class="pool-item" onclick={() => addAudio(audio._id)}>
                 <span class="cat-dot" style="background:{audio.category === 'movies' ? 'var(--red)' : audio.category === 'animes' ? 'var(--blue)' : 'var(--green)'}"></span>
                 <span class="pool-name">{audio.answer}</span>
                 <Plus size={12} stroke-width={1.8} class="add-icon" />
-              </div>
+              </button>
             {/each}
           </div>
         </div>
@@ -222,10 +244,16 @@
   }
   .pool-list, .selected-list { overflow: auto; flex: 1; }
   .pool-item {
+    width: 100%;
     padding: 10px 16px;
     cursor: pointer;
     font-size: 13px;
     border-bottom: 1px solid var(--border);
+    border-top: 0;
+    border-left: 0;
+    border-right: 0;
+    background: transparent;
+    text-align: left;
     display: flex;
     align-items: center;
     gap: 10px;

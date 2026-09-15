@@ -1,9 +1,9 @@
-use actix_web::{web, HttpRequest, HttpResponse};
-use serde::Deserialize;
 use crate::db::{lock_db, DbPool};
 use crate::db_try;
-use crate::middleware::{Administrator, Authed, Contributor, AuthState, extract_claims};
+use crate::middleware::{extract_current_claims, Administrator, AuthState, Authed, Contributor};
 use crate::video_processor::{is_supported_video_url, ProcessingJob, ProcessingQueue};
+use actix_web::{web, HttpRequest, HttpResponse};
+use serde::Deserialize;
 
 /// Manual flags hide an audio from every player, so they are rate limited per account.
 const MANUAL_FLAGS_PER_HOUR: i64 = 10;
@@ -51,6 +51,8 @@ pub struct GetNextAudioQuery {
     pub disabled_users: Option<String>,
     #[serde(rename = "audioId")]
     pub audio_id: Option<String>,
+    #[serde(rename = "revealAfter")]
+    pub reveal_after: Option<usize>,
 }
 
 #[derive(Deserialize)]
@@ -108,11 +110,24 @@ pub struct AudioIdQuery {
 }
 
 #[derive(Deserialize)]
-pub struct TestAnswerBody {
-    #[serde(rename = "audioId")]
-    pub audio_id: String,
-    #[serde(rename = "userAnswer")]
-    pub user_answer: String,
+pub struct AnswerTokenQuery {
+    pub token: String,
+}
+
+fn add_answer_token(
+    data: &mut serde_json::Value,
+    auth: &AuthState,
+    query: &GetNextAudioQuery,
+) -> bool {
+    let Some(audio_id) = data["videoData"]["_id"].as_str() else {
+        return false;
+    };
+    let delay = query.reveal_after.unwrap_or(15).clamp(5, 30);
+    let Ok(token) = auth.create_answer_token(audio_id, delay) else {
+        return false;
+    };
+    data["answerToken"] = serde_json::Value::String(token);
+    true
 }
 
 pub async fn get_next_audio(
@@ -122,16 +137,20 @@ pub async fn get_next_audio(
     auth: web::Data<AuthState>,
 ) -> HttpResponse {
     // Play stats are attributed to the caller's token, not to a `userId` they picked.
-    let user_id = extract_claims(&req, &auth).map(|c| c.sub);
+    let user_id = extract_current_claims(&req, &auth, &db).map(|c| c.sub);
     let db = lock_db(&db);
 
     // Parse excluded audio IDs
-    let passed_ids: Vec<String> = query.passed_audios_ids.as_deref()
+    let passed_ids: Vec<String> = query
+        .passed_audios_ids
+        .as_deref()
         .and_then(|s| serde_json::from_str(s).ok())
         .unwrap_or_default();
 
     // Parse disabled users
-    let disabled_users: Vec<String> = query.disabled_users.as_deref()
+    let disabled_users: Vec<String> = query
+        .disabled_users
+        .as_deref()
         .and_then(|s| serde_json::from_str(s).ok())
         .unwrap_or_default();
 
@@ -142,7 +161,9 @@ pub async fn get_next_audio(
     if let Some(ref audio_id) = query.audio_id {
         let result = db.query_row(
             "SELECT a.id, a.category, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, u.name
-             FROM audios a LEFT JOIN users u ON a.submitted_by = u.id WHERE a.id = ?1",
+             FROM audios a LEFT JOIN users u ON a.submitted_by = u.id
+             WHERE a.id = ?1 AND a.processing_status = 'ready'
+               AND a.id NOT IN (SELECT audio_id FROM flagged_audios WHERE auto = 0)",
             [audio_id],
             |row| {
                 Ok(serde_json::json!({
@@ -162,9 +183,16 @@ pub async fn get_next_audio(
         );
 
         return match result {
-            Ok(data) => {
+            Ok(mut data) => {
                 // Increment count
-                let _ = db.execute("UPDATE audios SET count = count + 1 WHERE id = ?1", [audio_id]);
+                db_try!(db.execute(
+                    "UPDATE audios SET count = count + 1 WHERE id = ?1",
+                    [audio_id]
+                ));
+                if !add_answer_token(&mut data, &auth, &query) {
+                    return HttpResponse::InternalServerError()
+                        .json("Could not create answer token");
+                }
                 HttpResponse::Ok().json(data)
             }
             Err(_) => HttpResponse::NotFound().json("Audio not found"),
@@ -190,26 +218,43 @@ pub async fn get_next_audio(
 
     // Exclude passed audio IDs
     if !passed_ids.is_empty() {
-        let placeholders: Vec<String> = passed_ids.iter().enumerate().map(|(i, _)| {
-            params.push(Box::new(passed_ids[i].clone()));
-            format!("?{}", params.len())
-        }).collect();
+        let placeholders: Vec<String> = passed_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+                params.push(Box::new(passed_ids[i].clone()));
+                format!("?{}", params.len())
+            })
+            .collect();
         conditions.push(format!("a.id NOT IN ({})", placeholders.join(",")));
     }
 
     // Exclude disabled users
     if !disabled_users.is_empty() {
-        let placeholders: Vec<String> = disabled_users.iter().enumerate().map(|(i, _)| {
-            params.push(Box::new(disabled_users[i].clone()));
-            format!("?{}", params.len())
-        }).collect();
-        conditions.push(format!("a.submitted_by NOT IN ({})", placeholders.join(",")));
+        let placeholders: Vec<String> = disabled_users
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+                params.push(Box::new(disabled_users[i].clone()));
+                format!("?{}", params.len())
+            })
+            .collect();
+        conditions.push(format!(
+            "a.submitted_by NOT IN ({})",
+            placeholders.join(",")
+        ));
     }
 
     // Exclude flagged audios
-    conditions.push("a.id NOT IN (SELECT DISTINCT audio_id FROM flagged_audios WHERE auto = 0)".to_string());
+    conditions.push(
+        "a.id NOT IN (SELECT DISTINCT audio_id FROM flagged_audios WHERE auto = 0)".to_string(),
+    );
 
-    let order = if prioritize { "a.count ASC, RANDOM()" } else { "RANDOM()" };
+    let order = if prioritize {
+        "a.count ASC, RANDOM()"
+    } else {
+        "RANDOM()"
+    };
     let sql = format!(
         "SELECT a.id, a.category, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, u.name
          FROM audios a LEFT JOIN users u ON a.submitted_by = u.id
@@ -236,9 +281,12 @@ pub async fn get_next_audio(
     });
 
     match result {
-        Ok(data) => {
+        Ok(mut data) => {
             let audio_id = data["videoData"]["_id"].as_str().unwrap_or("").to_string();
-            let _ = db.execute("UPDATE audios SET count = count + 1 WHERE id = ?1", [&audio_id]);
+            db_try!(db.execute(
+                "UPDATE audios SET count = count + 1 WHERE id = ?1",
+                [&audio_id]
+            ));
 
             // Log user stat if available
             if let Some(ref uid) = user_id {
@@ -247,13 +295,16 @@ pub async fn get_next_audio(
                     let stat_id = uuid::Uuid::new_v4().to_string();
                     let now = chrono::Utc::now().to_rfc3339();
                     let category = data["videoData"]["category"].as_str().unwrap_or("");
-                    let _ = db.execute(
+                    db_try!(db.execute(
                         "INSERT INTO stats (id, category, user_id, date, metadata) VALUES (?1, 'audioPlay', ?2, ?3, ?4)",
                         rusqlite::params![stat_id, uid, now, serde_json::json!({"audioId": audio_id, "audioCat": category}).to_string()],
-                    );
+                    ));
                 }
             }
 
+            if !add_answer_token(&mut data, &auth, &query) {
+                return HttpResponse::InternalServerError().json("Could not create answer token");
+            }
             HttpResponse::Ok().json(data)
         }
         Err(_) => HttpResponse::NotFound().json("No audio found for these criteria"),
@@ -263,13 +314,18 @@ pub async fn get_next_audio(
 /// The answer is deliberately not part of `/getnextaudio`, otherwise every player
 /// could read it out of the network tab before guessing. It is fetched at reveal.
 pub async fn get_audio_answer(
-    query: web::Query<AudioIdQuery>,
+    query: web::Query<AnswerTokenQuery>,
     db: web::Data<DbPool>,
+    auth: web::Data<AuthState>,
 ) -> HttpResponse {
+    let claims = match auth.verify_answer_token(&query.token) {
+        Ok(claims) => claims,
+        Err(_) => return HttpResponse::Unauthorized().json("Answer is not available yet"),
+    };
     let db = lock_db(&db);
     let answer: Result<String, _> = db.query_row(
         "SELECT answer FROM audios WHERE id = ?1",
-        rusqlite::params![query.audio_id],
+        rusqlite::params![claims.sub],
         |row| row.get(0),
     );
 
@@ -293,9 +349,9 @@ pub async fn new_audio(
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
-    
+
     // Rename to avoid shadowing so `db` can be cloned later
-    let db_locked = lock_db(&db); 
+    let db_locked = lock_db(&db);
 
     if pending_for_user(&db_locked, &claims.sub) >= MAX_PENDING_PER_USER {
         return queue_full();
@@ -314,23 +370,26 @@ pub async fn new_audio(
     match result {
         Ok(_) => {
             let stat_id = uuid::Uuid::new_v4().to_string();
-            let _ = db_locked.execute(
+            db_try!(db_locked.execute(
                 "INSERT INTO stats (id, category, user_id, date, metadata) VALUES (?1, 'audioAdd', ?2, ?3, ?4)",
                 rusqlite::params![stat_id, claims.sub, now, serde_json::json!({"audioId": id, "audioCat": body.category}).to_string()],
-            );
+            ));
 
             // Correctly clone the Actix web::Data pool instead of the undefined `db_pool`
-            if queue.try_send(ProcessingJob {
-                db: db.clone(),
-                audio_id: id.clone(),
-                video_url: body.video_url.clone(),
-                start_time: body.start_time.unwrap_or(0),
-                table: "audios",
-            }).is_err() {
-                let _ = db_locked.execute(
+            if queue
+                .try_send(ProcessingJob {
+                    db: db.clone(),
+                    audio_id: id.clone(),
+                    video_url: body.video_url.clone(),
+                    start_time: body.start_time.unwrap_or(0),
+                    table: "audios",
+                })
+                .is_err()
+            {
+                db_try!(db_locked.execute(
                     "UPDATE audios SET processing_status = 'error' WHERE id = ?1",
                     rusqlite::params![id],
-                );
+                ));
                 return queue_full();
             }
 
@@ -354,7 +413,7 @@ pub async fn suggest_audio(
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
-    
+
     let db_conn = lock_db(&db);
 
     if pending_for_user(&db_conn, &claims.sub) >= MAX_PENDING_PER_USER {
@@ -373,17 +432,20 @@ pub async fn suggest_audio(
 
     match result {
         Ok(_) => {
-            if queue.try_send(ProcessingJob {
-                db: db.clone(),
-                audio_id: id.clone(),
-                video_url: body.video_url.clone(),
-                start_time: body.start_time.unwrap_or(0),
-                table: "suggestions",
-            }).is_err() {
-                let _ = db_conn.execute(
+            if queue
+                .try_send(ProcessingJob {
+                    db: db.clone(),
+                    audio_id: id.clone(),
+                    video_url: body.video_url.clone(),
+                    start_time: body.start_time.unwrap_or(0),
+                    table: "suggestions",
+                })
+                .is_err()
+            {
+                db_try!(db_conn.execute(
                     "UPDATE suggestions SET processing_status = 'error' WHERE id = ?1",
                     rusqlite::params![id],
-                );
+                ));
                 return queue_full();
             }
             HttpResponse::Ok().json(serde_json::json!({"_id": id}))
@@ -392,17 +454,14 @@ pub async fn suggest_audio(
     }
 }
 
-pub async fn get_all_audios(
-    _user: Contributor,
-    db: web::Data<DbPool>,
-) -> HttpResponse {
+pub async fn get_all_audios(_user: Contributor, db: web::Data<DbPool>) -> HttpResponse {
     let db = lock_db(&db);
     let mut stmt = db_try!(db.prepare(
         "SELECT a.id, a.category, a.answer, a.video_url, a.start_time, a.superflus, a.count, a.submitted_by, a.added_date, u.name, a.processing_status, a.s3_object_key
          FROM audios a LEFT JOIN users u ON a.submitted_by = u.id ORDER BY a.added_date DESC"
     ));
 
-    let audios: Vec<serde_json::Value> = db_try!(stmt.query_map([], |row| {
+    let audio_rows = db_try!(stmt.query_map([], |row| {
         let audio_id: String = row.get(0)?;
         Ok(serde_json::json!({
             "_id": audio_id,
@@ -418,13 +477,14 @@ pub async fn get_all_audios(
             "processingStatus": row.get::<_, String>(10).unwrap_or_else(|_| "ready".to_string()),
             "s3ObjectKey": row.get::<_, String>(11).ok(),
         }))
-    })).filter_map(|r| r.ok()).collect();
+    }));
+    let audios = db_try!(audio_rows.collect::<rusqlite::Result<Vec<_>>>());
 
     // Flags for every audio in one pass. This used to prepare and run a statement per
     // audio — over two thousand round trips per page load, all under the connection lock.
-    let mut flag_stmt = db_try!(db.prepare(
-        "SELECT audio_id, id, report_message, user_id, date, auto FROM flagged_audios"
-    ));
+    let mut flag_stmt = db_try!(
+        db.prepare("SELECT audio_id, id, report_message, user_id, date, auto FROM flagged_audios")
+    );
     let mut flags_by_audio: std::collections::HashMap<String, Vec<serde_json::Value>> =
         std::collections::HashMap::new();
     let flag_rows = db_try!(flag_stmt.query_map([], |row| {
@@ -439,7 +499,7 @@ pub async fn get_all_audios(
             }),
         ))
     }));
-    for (audio_id, flag) in flag_rows.filter_map(|r| r.ok()) {
+    for (audio_id, flag) in db_try!(flag_rows.collect::<rusqlite::Result<Vec<_>>>()) {
         flags_by_audio.entry(audio_id).or_default().push(flag);
     }
 
@@ -489,46 +549,44 @@ pub async fn update_audio(
 
     {
         let db_locked = lock_db(&db);
-        if let Some(ref cat) = body.category {
-            let _ = db_locked.execute("UPDATE audios SET category = ?1 WHERE id = ?2", rusqlite::params![cat, body.id]);
-        }
-        if let Some(ref answer) = body.answer {
-            let _ = db_locked.execute("UPDATE audios SET answer = ?1 WHERE id = ?2", rusqlite::params![answer, body.id]);
-        }
-        if let Some(ref url) = body.video_url {
-            let _ = db_locked.execute("UPDATE audios SET video_url = ?1 WHERE id = ?2", rusqlite::params![url, body.id]);
-        }
-        if let Some(st) = body.start_time {
-            let _ = db_locked.execute("UPDATE audios SET start_time = ?1 WHERE id = ?2", rusqlite::params![st, body.id]);
-        }
-        if let Some(sup) = body.superflus {
-            let _ = db_locked.execute("UPDATE audios SET superflus = ?1 WHERE id = ?2", rusqlite::params![sup, body.id]);
-        }
-        let _ = db_locked.execute("UPDATE audios SET last_updated_by = ?1 WHERE id = ?2", rusqlite::params![claims.sub, body.id]);
-
-        if needs_reprocess {
-            let _ = db_locked.execute(
-                "UPDATE audios SET processing_status = 'processing', s3_object_key = NULL WHERE id = ?1",
-                rusqlite::params![body.id],
-            );
-        }
+        db_try!(db_locked.execute(
+            "UPDATE audios SET
+                category = COALESCE(?1, category), answer = COALESCE(?2, answer),
+                video_url = COALESCE(?3, video_url), start_time = COALESCE(?4, start_time),
+                superflus = COALESCE(?5, superflus), last_updated_by = ?6,
+                processing_status = CASE WHEN ?7 THEN 'processing' ELSE processing_status END,
+                s3_object_key = CASE WHEN ?7 THEN NULL ELSE s3_object_key END
+             WHERE id = ?8",
+            rusqlite::params![
+                body.category.as_deref(),
+                body.answer.as_deref(),
+                body.video_url.as_deref(),
+                body.start_time,
+                body.superflus,
+                claims.sub,
+                needs_reprocess,
+                body.id
+            ],
+        ));
     }
 
-    if needs_reprocess {
-        if queue.try_send(ProcessingJob {
-            db: db.clone(),
-            audio_id: body.id.clone(),
-            video_url: new_url.to_string(),
-            start_time: new_start_time,
-            table: "audios",
-        }).is_err() {
-            let db_locked = lock_db(&db);
-            let _ = db_locked.execute(
-                "UPDATE audios SET processing_status = 'error' WHERE id = ?1",
-                rusqlite::params![body.id],
-            );
-            return queue_full();
-        }
+    if needs_reprocess
+        && queue
+            .try_send(ProcessingJob {
+                db: db.clone(),
+                audio_id: body.id.clone(),
+                video_url: new_url.to_string(),
+                start_time: new_start_time,
+                table: "audios",
+            })
+            .is_err()
+    {
+        let db_locked = lock_db(&db);
+        db_try!(db_locked.execute(
+            "UPDATE audios SET processing_status = 'error' WHERE id = ?1",
+            rusqlite::params![body.id],
+        ));
+        return queue_full();
     }
 
     HttpResponse::Ok().json("Audio updated")
@@ -560,24 +618,27 @@ pub async fn reprocess_audio(
 
     {
         let db_locked = lock_db(&db);
-        let _ = db_locked.execute(
+        db_try!(db_locked.execute(
             "UPDATE audios SET processing_status = 'processing', s3_object_key = NULL WHERE id = ?1",
             rusqlite::params![query.audio_id],
-        );
+        ));
     }
 
-    if queue.try_send(ProcessingJob {
-        db: db.clone(),
-        audio_id: query.audio_id.clone(),
-        video_url,
-        start_time,
-        table: "audios",
-    }).is_err() {
+    if queue
+        .try_send(ProcessingJob {
+            db: db.clone(),
+            audio_id: query.audio_id.clone(),
+            video_url,
+            start_time,
+            table: "audios",
+        })
+        .is_err()
+    {
         let db_locked = lock_db(&db);
-        let _ = db_locked.execute(
+        db_try!(db_locked.execute(
             "UPDATE audios SET processing_status = 'error' WHERE id = ?1",
             rusqlite::params![query.audio_id],
-        );
+        ));
         return queue_full();
     }
 
@@ -644,7 +705,10 @@ pub async fn reset_flag(
     db: web::Data<DbPool>,
 ) -> HttpResponse {
     let db = lock_db(&db);
-    let _ = db.execute("DELETE FROM flagged_audios WHERE audio_id = ?1", [&body.audio_id]);
+    db_try!(db.execute(
+        "DELETE FROM flagged_audios WHERE audio_id = ?1",
+        [&body.audio_id]
+    ));
     HttpResponse::Ok().json("Flags reset")
 }
 
@@ -654,42 +718,19 @@ pub async fn delete_audio(
     db: web::Data<DbPool>,
 ) -> HttpResponse {
     let db = lock_db(&db);
-    let _ = db.execute("DELETE FROM audios WHERE id = ?1", [&query.id]);
+    let changed = db_try!(db.execute("DELETE FROM audios WHERE id = ?1", [&query.id]));
+    if changed == 0 {
+        return HttpResponse::NotFound().json("Audio not found");
+    }
     HttpResponse::Ok().json("Audio deleted")
 }
 
-pub async fn test_answer(
-    body: web::Json<TestAnswerBody>,
-    db: web::Data<DbPool>,
-) -> HttpResponse {
-    let db = lock_db(&db);
-    let result = db.query_row(
-        "SELECT answer FROM audios WHERE id = ?1",
-        [&body.audio_id],
-        |row| row.get::<_, String>(0),
-    );
-
-    match result {
-        Ok(correct) => {
-            let similarity = strsim::jaro_winkler(
-                &correct.to_lowercase(),
-                &body.user_answer.to_lowercase(),
-            );
-            HttpResponse::Ok().json(serde_json::json!({"similarity": similarity}))
-        }
-        Err(_) => HttpResponse::NotFound().json("Audio not found"),
-    }
-}
-
-pub async fn backup_audios(
-    _user: Administrator,
-    db: web::Data<DbPool>,
-) -> HttpResponse {
+pub async fn backup_audios(_user: Administrator, db: web::Data<DbPool>) -> HttpResponse {
     let db = lock_db(&db);
 
     // Collect all audios as JSON
     let mut stmt = db_try!(db.prepare("SELECT id, category, answer, video_url, start_time, superflus, count, submitted_by, added_date FROM audios"));
-    let audios: Vec<serde_json::Value> = db_try!(stmt.query_map([], |row| {
+    let rows = db_try!(stmt.query_map([], |row| {
         Ok(serde_json::json!({
             "_id": row.get::<_, String>(0)?,
             "category": row.get::<_, String>(1)?,
@@ -701,7 +742,8 @@ pub async fn backup_audios(
             "submittedBy": row.get::<_, String>(7)?,
             "addedDate": row.get::<_, String>(8)?,
         }))
-    })).filter_map(|r| r.ok()).collect();
+    }));
+    let audios = db_try!(rows.collect::<rusqlite::Result<Vec<_>>>());
 
     let json_data = serde_json::to_string_pretty(&audios).unwrap_or_default();
 
@@ -712,7 +754,11 @@ pub async fn backup_audios(
         let options = zip::write::SimpleFileOptions::default();
         let zipped = zip_writer
             .start_file("audios.json", options)
-            .and_then(|_| zip_writer.write_all(json_data.as_bytes()).map_err(Into::into))
+            .and_then(|_| {
+                zip_writer
+                    .write_all(json_data.as_bytes())
+                    .map_err(Into::into)
+            })
             .and_then(|_| zip_writer.finish().map(|_| ()));
         if let Err(e) = zipped {
             log::error!("Failed to build backup archive: {}", e);

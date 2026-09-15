@@ -14,7 +14,6 @@ rusqlite = { version = "0.39", features = ["bundled"] }
 jsonwebtoken = { version = "10", features = ["use_pem", "rust_crypto"] }
 bcrypt = "0.19"
 uuid = { version = "1", features = ["v4"] }
-strsim = "0.11"
 chrono = { version = "0.4", features = ["serde"] }
 zip = "8.6"
 log = "0.4"

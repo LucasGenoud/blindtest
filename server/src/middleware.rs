@@ -1,10 +1,11 @@
+use crate::db::{lock_db, DbPool};
 use actix_web::dev::Payload;
 use actix_web::{FromRequest, HttpRequest, HttpResponse, ResponseError};
-use std::fmt;
-use std::future::{ready, Ready};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::fs;
+use std::future::{ready, Ready};
 use std::sync::Arc;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -16,6 +17,13 @@ pub struct Claims {
     pub exp: usize,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AnswerClaims {
+    pub sub: String,
+    pub nbf: usize,
+    pub exp: usize,
+}
+
 #[derive(Clone)]
 pub struct AuthState {
     pub decoding_key: Arc<DecodingKey>,
@@ -24,20 +32,28 @@ pub struct AuthState {
 
 impl AuthState {
     pub fn new() -> Self {
-        let public_key = fs::read("secret/public.pem")
-            .expect("Could not read secret/public.pem");
-        let private_key = fs::read("secret/private.pem")
-            .expect("Could not read secret/private.pem");
+        let public_key = fs::read("secret/public.pem").expect("Could not read secret/public.pem");
+        let private_key =
+            fs::read("secret/private.pem").expect("Could not read secret/private.pem");
 
         AuthState {
-            decoding_key: Arc::new(DecodingKey::from_rsa_pem(&public_key)
-                .expect("Invalid RSA public key")),
-            encoding_key: Arc::new(jsonwebtoken::EncodingKey::from_rsa_pem(&private_key)
-                .expect("Invalid RSA private key")),
+            decoding_key: Arc::new(
+                DecodingKey::from_rsa_pem(&public_key).expect("Invalid RSA public key"),
+            ),
+            encoding_key: Arc::new(
+                jsonwebtoken::EncodingKey::from_rsa_pem(&private_key)
+                    .expect("Invalid RSA private key"),
+            ),
         }
     }
 
-    pub fn create_token(&self, user_id: &str, email: &str, name: &str, role: &str) -> Result<String, jsonwebtoken::errors::Error> {
+    pub fn create_token(
+        &self,
+        user_id: &str,
+        email: &str,
+        name: &str,
+        role: &str,
+    ) -> Result<String, jsonwebtoken::errors::Error> {
         let claims = Claims {
             sub: user_id.to_string(),
             email: email.to_string(),
@@ -58,6 +74,33 @@ impl AuthState {
         let token_data = decode::<Claims>(token, &self.decoding_key, &validation)?;
         Ok(token_data.claims)
     }
+
+    pub fn create_answer_token(
+        &self,
+        audio_id: &str,
+        delay_seconds: usize,
+    ) -> Result<String, jsonwebtoken::errors::Error> {
+        let now = chrono::Utc::now().timestamp() as usize;
+        jsonwebtoken::encode(
+            &jsonwebtoken::Header::new(Algorithm::RS256),
+            &AnswerClaims {
+                sub: audio_id.to_string(),
+                nbf: now + delay_seconds,
+                exp: now + delay_seconds + 300,
+            },
+            &self.encoding_key,
+        )
+    }
+
+    pub fn verify_answer_token(
+        &self,
+        token: &str,
+    ) -> Result<AnswerClaims, jsonwebtoken::errors::Error> {
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.validate_nbf = true;
+        validation.leeway = 0;
+        Ok(decode::<AnswerClaims>(token, &self.decoding_key, &validation)?.claims)
+    }
 }
 
 /// Extract claims from the Authorization header.
@@ -66,6 +109,28 @@ pub fn extract_claims(req: &actix_web::HttpRequest, auth: &AuthState) -> Option<
     let header = req.headers().get("Authorization")?;
     let token_str = header.to_str().ok()?;
     auth.verify_token(token_str).ok()
+}
+
+/// Refresh identity and permissions from SQLite so account changes take effect
+/// immediately instead of when a 30-day token expires.
+pub fn extract_current_claims(req: &HttpRequest, auth: &AuthState, db: &DbPool) -> Option<Claims> {
+    let claims = extract_claims(req, auth)?;
+    let db = lock_db(db);
+    refresh_claims(&db, claims)
+}
+
+fn refresh_claims(db: &rusqlite::Connection, mut claims: Claims) -> Option<Claims> {
+    let (email, name, role) = db
+        .query_row(
+            "SELECT email, name, role FROM users WHERE id = ?1 AND deleted = 0",
+            [&claims.sub],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .ok()?;
+    claims.email = email;
+    claims.name = name;
+    claims.role = role;
+    Some(claims)
 }
 
 /// Helper to return 401 response
@@ -77,7 +142,6 @@ pub fn unauthorized() -> HttpResponse {
 pub fn forbidden() -> HttpResponse {
     HttpResponse::Forbidden().json(serde_json::json!({"error": "Forbidden"}))
 }
-
 
 /// Why a request was refused. Implements `ResponseError`, so an extractor can
 /// reject before the handler body runs and still answer with the same shape the
@@ -108,7 +172,8 @@ impl ResponseError for AuthError {
 
 fn claims_of(req: &HttpRequest) -> Option<Claims> {
     let auth = req.app_data::<actix_web::web::Data<AuthState>>()?;
-    extract_claims(req, auth)
+    let db = req.app_data::<actix_web::web::Data<DbPool>>()?;
+    extract_current_claims(req, auth, db)
 }
 
 /// Declaring one of these in a handler's arguments *is* the access check: every
@@ -135,13 +200,37 @@ macro_rules! role_extractor {
     };
 }
 
-role_extractor!(Authed, "Any signed-in user.", |_| true, AuthError::Unauthorized);
+role_extractor!(
+    Authed,
+    "Any signed-in user.",
+    |_| true,
+    AuthError::Unauthorized
+);
 role_extractor!(
     Contributor,
     "A contributor or an administrator.",
     |c| c.role == "contributor" || c.role == "administrator",
     AuthError::Forbidden
 );
+
+#[cfg(test)]
+mod tests {
+    use super::{refresh_claims, Claims};
+
+    #[test]
+    fn current_database_role_and_deleted_state_win_over_the_token() {
+        let db = rusqlite::Connection::open_in_memory().unwrap();
+        db.execute_batch("CREATE TABLE users (id TEXT, email TEXT, name TEXT, role TEXT, deleted INTEGER);").unwrap();
+        db.execute("INSERT INTO users VALUES ('1', 'a@example.com', 'A', 'user', 0)", []).unwrap();
+        let claims = Claims {
+            sub: "1".into(), email: "old@example.com".into(), name: "Old".into(),
+            role: "administrator".into(), exp: usize::MAX,
+        };
+        assert_eq!(refresh_claims(&db, claims.clone()).unwrap().role, "user");
+        db.execute("UPDATE users SET deleted = 1", []).unwrap();
+        assert!(refresh_claims(&db, claims).is_none());
+    }
+}
 role_extractor!(
     Administrator,
     "An administrator only.",
