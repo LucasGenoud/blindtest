@@ -2,27 +2,18 @@ use actix_web::http::header::{HeaderValue, SEC_WEBSOCKET_PROTOCOL};
 use actix_web::{web, HttpRequest, HttpResponse};
 use actix_ws::Message;
 use futures_util::StreamExt;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::broadcast;
 use crate::middleware::AuthState;
 
 pub struct WsBroadcaster {
     tx: broadcast::Sender<String>,
-    clients: Mutex<HashMap<String, ClientInfo>>,
-}
-
-struct ClientInfo {
-    username: String,
 }
 
 impl WsBroadcaster {
     pub fn new() -> Arc<Self> {
         let (tx, _) = broadcast::channel(1024);
-        Arc::new(WsBroadcaster {
-            tx,
-            clients: Mutex::new(HashMap::new()),
-        })
+        Arc::new(WsBroadcaster { tx })
     }
 
     pub fn broadcast(&self, msg: &str) {
@@ -33,15 +24,7 @@ impl WsBroadcaster {
         self.tx.subscribe()
     }
 
-    pub fn add_client(&self, id: &str, username: &str) {
-        let mut clients = self.clients.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        clients.insert(id.to_string(), ClientInfo { username: username.to_string() });
-    }
-
     pub fn remove_client(&self, id: &str) {
-        let mut clients = self.clients.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        clients.remove(id);
-        // Broadcast removal
         let msg = serde_json::json!({
             "type": "removeUser",
             "wsId": id,
@@ -90,15 +73,13 @@ pub async fn ws_handler(
 
     let ws_id = uuid::Uuid::new_v4().to_string();
     let username = claims.name.clone();
-    broadcaster.add_client(&ws_id, &username);
-
     let broadcaster_clone = broadcaster.get_ref().clone();
     let ws_id_clone = ws_id.clone();
     let mut rx = broadcaster.subscribe();
 
     // Spawn task to forward broadcasts to this client
     let mut session_clone = session.clone();
-    actix_rt::spawn(async move {
+    actix_web::rt::spawn(async move {
         while let Ok(msg) = rx.recv().await {
             if session_clone.text(msg).await.is_err() {
                 break;
@@ -108,7 +89,7 @@ pub async fn ws_handler(
 
     // Spawn task to handle incoming messages from this client
     let broadcaster_for_recv = broadcaster_clone.clone();
-    actix_rt::spawn(async move {
+    actix_web::rt::spawn(async move {
         while let Some(Ok(msg)) = msg_stream.next().await {
             match msg {
                 Message::Text(text) => {

@@ -126,14 +126,6 @@
     align-items: center;
   }
 
-  .search-icon {
-    position: absolute;
-    left: 10px;
-    color: var(--text-dim);
-    font-size: 15px;
-    pointer-events: none;
-  }
-
   .search-input {
     padding-left: 28px;
     width: 220px;

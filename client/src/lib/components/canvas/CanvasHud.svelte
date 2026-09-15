@@ -66,20 +66,6 @@
     background: var(--surface-2);
   }
 
-  .hud-btn.hud-btn-text {
-    width: auto;
-    font-size: 11px;
-    padding: 0 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-  }
-
-  .hud-btn.hud-btn-text.active {
-    color: var(--accent-ink);
-    background: var(--surface-2);
-  }
-
   .hud-zoom {
     font-family: var(--mono);
     font-size: 11px;

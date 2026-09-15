@@ -15,42 +15,24 @@ function getAudioContext() {
   return audioCtx;
 }
 
-export function playSelect() {
+function play(frequency, duration, attack, level) {
   try {
     if (currentVolume === 0) return;
     const ctx = getAudioContext();
-    const gainVal = currentVolume / 100;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.type = 'sine';
-    osc.frequency.value = 800;
+    osc.frequency.value = frequency;
     const now = ctx.currentTime;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(gainVal * 0.15, now + 0.003);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+    gain.gain.linearRampToValueAtTime(currentVolume / 100 * level, now + attack);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     osc.start(now);
-    osc.stop(now + 0.04);
+    osc.stop(now + duration);
   } catch {}
 }
 
-export function playPaint() {
-  try {
-    if (currentVolume === 0) return;
-    const ctx = getAudioContext();
-    const gainVal = currentVolume / 100;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = 500;
-    const now = ctx.currentTime;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(gainVal * 0.2, now + 0.005);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
-    osc.start(now);
-    osc.stop(now + 0.06);
-  } catch {}
-}
+export const playSelect = () => play(800, 0.04, 0.003, 0.15);
+export const playPaint = () => play(500, 0.06, 0.005, 0.2);

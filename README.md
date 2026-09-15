@@ -29,9 +29,7 @@ This repository was generated and migrated using an AI assistant. While the code
 ```bash
 # Build and run the development environment
 docker compose up -d --build
+
+# Production override
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
-
-Refer to the individual `README` files in `client/` and `server/` for detailed setup instructions.
-
-## License
-[Specify your license here]

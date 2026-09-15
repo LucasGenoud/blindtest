@@ -16,11 +16,6 @@ pub struct SignupBody {
     pub name: String,
 }
 
-#[derive(Deserialize)]
-pub struct ConfirmEmailBody {
-    pub token: String,
-}
-
 pub async fn signin(
     body: web::Json<SigninBody>,
     db: web::Data<DbPool>,
@@ -80,7 +75,6 @@ pub async fn signin(
 pub async fn signup(
     body: web::Json<SignupBody>,
     db: web::Data<DbPool>,
-    auth: web::Data<AuthState>,
 ) -> HttpResponse {
     if body.password.len() < 6 {
         return HttpResponse::BadRequest().json("Password must be at least 6 characters");
@@ -100,15 +94,12 @@ pub async fn signup(
 
     let db = lock_db(&db);
     let result = db.execute(
-        "INSERT INTO users (id, email, name, password, role, email_confirmed, register_date) VALUES (?1, ?2, ?3, ?4, 'user', 1, ?5)",
+        "INSERT INTO users (id, email, name, password, role, register_date) VALUES (?1, ?2, ?3, ?4, 'user', ?5)",
         rusqlite::params![id, body.email.to_lowercase(), body.name, hash, now],
     );
 
     match result {
-        Ok(_) => {
-            // Email confirmation is discarded; auto-confirm
-            HttpResponse::Ok().json(serde_json::json!({"message": "User created"}))
-        }
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({"message": "User created"})),
         Err(e) => {
             let msg = e.to_string();
             if msg.contains("UNIQUE") {
@@ -117,21 +108,5 @@ pub async fn signup(
                 HttpResponse::InternalServerError().json(msg)
             }
         }
-    }
-}
-
-pub async fn confirm_email(
-    body: web::Json<ConfirmEmailBody>,
-    db: web::Data<DbPool>,
-) -> HttpResponse {
-    // Email sending is discarded, but keep endpoint for compatibility
-    let db = lock_db(&db);
-    let result = db.execute(
-        "UPDATE users SET email_confirmed = 1, email_confirmation_token = NULL WHERE email_confirmation_token = ?1",
-        [&body.token],
-    );
-    match result {
-        Ok(n) if n > 0 => HttpResponse::Ok().json("Email confirmed"),
-        _ => HttpResponse::BadRequest().json("Invalid token"),
     }
 }

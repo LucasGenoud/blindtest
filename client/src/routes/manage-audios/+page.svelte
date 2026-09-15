@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Download, X } from 'lucide-svelte';
   import { userPermission } from '$lib/stores/userStore.js';
-  import { audioApi } from '$lib/audios/audioApi.js';
+  import { api, apiTry } from '$lib/api.js';
   import {
     PAGE_SIZE_OPTIONS,
     countByStatus,
@@ -62,42 +62,42 @@
 
   async function load() {
     loading = true;
-    audios = await audioApi.list();
+    audios = await apiTry(api.get('/getallaudios'), []);
     loading = false;
   }
 
   async function addAudio() {
     if (!newAudio.answer || !newAudio.videoUrl) return;
-    await audioApi.create(newAudio);
+    await apiTry(api.post('/newaudio', newAudio));
     showAddForm = false;
     newAudio = { ...EMPTY_AUDIO };
     await load();
   }
 
   async function saveEdit() {
-    await audioApi.update(editAudio);
+    await apiTry(api.post('/updateaudio', editAudio));
     editAudio = null;
     await load();
   }
 
   async function deleteAudio(id) {
     if (!confirm('Delete this audio?')) return;
-    await audioApi.remove(id);
+    await apiTry(api.del(`/deleteaudio?id=${encodeURIComponent(id)}`));
     await load();
   }
 
   async function reprocessAudio(id) {
-    await audioApi.reprocess(id);
+    await apiTry(api.post(`/reprocessaudio?audioId=${encodeURIComponent(id)}`));
     await load();
   }
 
   async function resetFlag(id) {
-    await audioApi.resetFlag(id);
+    await apiTry(api.post('/resetflag', { audioId: id }));
     await load();
   }
 
   async function downloadBackup() {
-    const blob = await audioApi.backup();
+    const blob = await apiTry(api.get('/backupaudio', { parse: 'blob' }));
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

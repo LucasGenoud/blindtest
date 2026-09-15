@@ -47,8 +47,6 @@ pub struct GetNextAudioQuery {
     pub use_superflus: Option<String>,
     #[serde(rename = "prioritizeLessUsedAudios")]
     pub prioritize_less_used: Option<String>,
-    #[serde(rename = "userId")]
-    pub user_id: Option<String>,
     #[serde(rename = "disabledUsers")]
     pub disabled_users: Option<String>,
     #[serde(rename = "audioId")]
@@ -238,7 +236,7 @@ pub async fn get_next_audio(
     });
 
     match result {
-        Ok(mut data) => {
+        Ok(data) => {
             let audio_id = data["videoData"]["_id"].as_str().unwrap_or("").to_string();
             let _ = db.execute("UPDATE audios SET count = count + 1 WHERE id = ?1", [&audio_id]);
 

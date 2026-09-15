@@ -3,7 +3,7 @@
   import { goto } from '$app/navigation';
   import { api, apiTry, getApi } from '$lib/api.js';
   import { getVideoId, categoryListValueLabel } from '$lib/misc.js';
-  import { token, user, userPermission } from '$lib/stores/userStore.js';
+  import { token, userPermission } from '$lib/stores/userStore.js';
   import { blindtestStatus, timeToGuess, timeWithAnswer, numberOfAudios, currentAudioData, currentAudioNumber, showAnswer, useSuperflus, prioritizeLessUsedAudios, dataCategories, disabledUsers, showCategory, volume } from '$lib/stores/gameStore.js';
   import confetti from 'canvas-confetti';
   import { Pause, Play, ExternalLink, Flag, Volume2, VolumeX } from 'lucide-svelte';
@@ -80,21 +80,19 @@
   async function playAudio() {
     let params = {};
     if (customBlindtest) {
-      params = { audioId: customBlindtest.blindtestList[$currentAudioNumber], userId: $user?._id || '' };
+      params = { audioId: customBlindtest.blindtestList[$currentAudioNumber] };
     } else {
       params = {
         category: predefinedCategoryOrder[$currentAudioNumber] || '',
         passedAudiosIds: JSON.stringify(passedAudiosIds),
         useSuperflus: String($useSuperflus),
         prioritizeLessUsedAudios: String($prioritizeLessUsedAudios),
-        userId: $user?._id || '',
         disabledUsers: JSON.stringify($disabledUsers),
       };
     }
     const qs = new URLSearchParams(params).toString();
     try {
-      // The token identifies who is playing; the server no longer trusts a userId
-      // sent in the query string.
+      // The token identifies who is playing.
       const data = await api.get(`/getnextaudio?${qs}`);
 
       videoBuffering = true;

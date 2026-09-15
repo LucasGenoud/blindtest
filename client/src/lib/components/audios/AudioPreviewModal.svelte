@@ -85,32 +85,6 @@
 
   .close-btn:hover { color: var(--text-primary); background: var(--surface-2); }
 
-  /* Edit popup */
-  .edit-popup { width: 420px; }
-
-  .popup-body {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .field-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-top: 4px;
-  }
-
-  .popup-footer {
-    padding: 14px 20px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    gap: 8px;
-  }
-
   /* Preview popup */
   .preview-popup { width: 720px; max-width: 95vw; }
 

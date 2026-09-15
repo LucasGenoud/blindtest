@@ -44,17 +44,11 @@ def main():
         for u in users:
             cur.execute("""
                 INSERT OR REPLACE INTO users (
-                    id, email, name, password, role, clear_mode, hide_carousel,
-                    email_confirmation_token, email_confirmed, reset_password_token,
-                    reset_password_expires, register_date, deleted
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, email, name, password, role, register_date, deleted
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
                 u.get('_id'), u.get('email'), u.get('name'), u.get('password'),
-                u.get('role', 'user'), 1 if u.get('clearMode') else 0,
-                1 if u.get('hideCarousel') else 0, None, 1 if u.get('emailConfirmed') else 0,
-                u.get('resetPasswordToken'),
-                dt_to_iso(u.get('resetPasswordExpires')),
-                dt_to_iso(u.get('registerDate')), 0
+                u.get('role', 'user'), dt_to_iso(u.get('registerDate')), 0
             ))
         conn.commit()
         print(f"  Inserted {len(users)} users.")

@@ -5,13 +5,6 @@ use crate::db_try;
 use crate::middleware::{Administrator, Authed, Contributor};
 
 #[derive(Deserialize)]
-pub struct UpdateProfileBody {
-    pub name: Option<String>,
-    pub clear_mode: Option<bool>,
-    pub hide_carousel: Option<bool>,
-}
-
-#[derive(Deserialize)]
 pub struct UpdateUserBody {
     pub id: String,
     pub role: Option<String>,
@@ -31,7 +24,7 @@ pub async fn get_user(
 
     let db = lock_db(&db);
     let result = db.query_row(
-        "SELECT id, email, name, role, clear_mode, hide_carousel, email_confirmed, register_date FROM users WHERE id = ?1 AND deleted = 0",
+        "SELECT id, email, name, role, register_date FROM users WHERE id = ?1 AND deleted = 0",
         [&claims.sub],
         |row| {
             Ok(serde_json::json!({
@@ -39,10 +32,7 @@ pub async fn get_user(
                 "email": row.get::<_, String>(1)?,
                 "name": row.get::<_, String>(2)?,
                 "role": row.get::<_, String>(3)?,
-                "clearMode": row.get::<_, bool>(4)?,
-                "hideCarousel": row.get::<_, bool>(5)?,
-                "emailConfirmed": row.get::<_, bool>(6)?,
-                "registerDate": row.get::<_, String>(7)?,
+                "registerDate": row.get::<_, String>(4)?,
             }))
         },
     );
@@ -59,7 +49,7 @@ pub async fn get_users(
 ) -> HttpResponse {
     let db = lock_db(&db);
     let mut stmt = db_try!(db.prepare(
-        "SELECT id, email, name, role, email_confirmed, register_date, deleted FROM users ORDER BY register_date DESC"
+        "SELECT id, email, name, role, register_date, deleted FROM users ORDER BY register_date DESC"
     ));
 
     let users: Vec<serde_json::Value> = db_try!(stmt.query_map([], |row| {
@@ -68,9 +58,8 @@ pub async fn get_users(
             "email": row.get::<_, String>(1)?,
             "name": row.get::<_, String>(2)?,
             "role": row.get::<_, String>(3)?,
-            "emailConfirmed": row.get::<_, bool>(4)?,
-            "registerDate": row.get::<_, String>(5)?,
-            "deleted": row.get::<_, bool>(6)?,
+            "registerDate": row.get::<_, String>(4)?,
+            "deleted": row.get::<_, bool>(5)?,
         }))
     })).filter_map(|r| r.ok()).collect();
 
@@ -93,27 +82,6 @@ pub async fn get_contributor_users(
     })).filter_map(|r| r.ok()).collect();
 
     HttpResponse::Ok().json(users)
-}
-
-pub async fn update_profile(
-    user: Authed,
-    body: web::Json<UpdateProfileBody>,
-    db: web::Data<DbPool>,
-) -> HttpResponse {
-    let claims = user.0;
-
-    let db = lock_db(&db);
-    if let Some(ref name) = body.name {
-        let _ = db.execute("UPDATE users SET name = ?1 WHERE id = ?2", rusqlite::params![name, claims.sub]);
-    }
-    if let Some(clear_mode) = body.clear_mode {
-        let _ = db.execute("UPDATE users SET clear_mode = ?1 WHERE id = ?2", rusqlite::params![clear_mode, claims.sub]);
-    }
-    if let Some(hide_carousel) = body.hide_carousel {
-        let _ = db.execute("UPDATE users SET hide_carousel = ?1 WHERE id = ?2", rusqlite::params![hide_carousel, claims.sub]);
-    }
-
-    HttpResponse::Ok().json("Profile updated")
 }
 
 pub async fn update_user(
@@ -144,30 +112,4 @@ pub async fn delete_user(
     let db = lock_db(&db);
     let _ = db.execute("UPDATE users SET deleted = 1 WHERE id = ?1", [&query.id]);
     HttpResponse::Ok().json("User deleted")
-}
-
-pub async fn get_user_profile(
-    user: Authed,
-    db: web::Data<DbPool>,
-) -> HttpResponse {
-    let claims = user.0;
-
-    let db = lock_db(&db);
-    let result = db.query_row(
-        "SELECT id, name, clear_mode, hide_carousel FROM users WHERE id = ?1",
-        [&claims.sub],
-        |row| {
-            Ok(serde_json::json!({
-                "_id": row.get::<_, String>(0)?,
-                "name": row.get::<_, String>(1)?,
-                "clearMode": row.get::<_, bool>(2)?,
-                "hideCarousel": row.get::<_, bool>(3)?,
-            }))
-        },
-    );
-
-    match result {
-        Ok(user) => HttpResponse::Ok().json(user),
-        Err(_) => HttpResponse::NotFound().json("User not found"),
-    }
 }

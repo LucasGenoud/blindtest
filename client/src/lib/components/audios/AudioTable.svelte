@@ -124,15 +124,6 @@
   }
 
   /* ── Table ── */
-  .table-wrap {
-    flex: 1;
-    overflow: auto;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .loading-region { position: relative; height: 2px; }
-
   table {
     width: 100%;
     border-collapse: collapse;
@@ -165,12 +156,6 @@
   td.mono {
     font-size: 13px;
     color: var(--text-dim);
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Numbers right-aligned and tabular. */
-  th.num, td.num {
-    text-align: right;
     font-variant-numeric: tabular-nums;
   }
 

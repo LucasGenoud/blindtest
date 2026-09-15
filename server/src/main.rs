@@ -1,14 +1,12 @@
 mod db;
 mod llm;
 mod middleware;
-mod models;
 mod routes;
 mod ws;
 mod video_processor;
 
 use actix_web::{web, App, HttpServer};
 use actix_cors::Cors;
-use std::sync::Arc;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -59,15 +57,12 @@ async fn main() -> std::io::Result<()> {
             // Auth
             .route("/signin", web::post().to(routes::auth::signin))
             .route("/signup", web::post().to(routes::auth::signup))
-            .route("/confirmemail", web::post().to(routes::auth::confirm_email))
             // Users
             .route("/getuser", web::get().to(routes::users::get_user))
             .route("/getusers", web::get().to(routes::users::get_users))
             .route("/getcontributorusers", web::get().to(routes::users::get_contributor_users))
-            .route("/updateprofile", web::post().to(routes::users::update_profile))
             .route("/updateuser", web::post().to(routes::users::update_user))
             .route("/deleteuser", web::delete().to(routes::users::delete_user))
-            .route("/getUserProfile", web::post().to(routes::users::get_user_profile))
             // Audios
             .route("/getnextaudio", web::get().to(routes::audios::get_next_audio))
             .route("/getaudioanswer", web::get().to(routes::audios::get_audio_answer))
@@ -105,7 +100,6 @@ async fn main() -> std::io::Result<()> {
             .route("/media/{id}", web::get().to(routes::media::stream_media))
             // Stats
             .route("/getBlindtestStats", web::get().to(routes::stats::get_blindtest_stats))
-            .route("/getCanvasStats", web::get().to(routes::stats::get_canvas_stats))
             // WebSocket
             .route("/ws", web::get().to(ws::ws_handler))
     })

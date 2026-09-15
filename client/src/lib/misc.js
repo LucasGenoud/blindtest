@@ -32,10 +32,6 @@ export function getVideoId(url) {
   return id;
 }
 
-export function checkEmail(email) {
-  return email.toLowerCase().match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
-}
-
 export function debounce(fn, delay) {
   let timeout = null;
   return function (...args) {

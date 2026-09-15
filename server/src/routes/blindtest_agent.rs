@@ -912,7 +912,7 @@ fn fit_to_budget(catalog: Vec<CatalogEntry>, budget: usize) -> (Vec<CatalogEntry
     let mut kept: Vec<CatalogEntry> = Vec::with_capacity((before as f64 * keep_share) as usize + 1);
     let mut group: Vec<CatalogEntry> = Vec::new();
 
-    let mut flush = |group: &mut Vec<CatalogEntry>, kept: &mut Vec<CatalogEntry>| {
+    let flush = |group: &mut Vec<CatalogEntry>, kept: &mut Vec<CatalogEntry>| {
         if group.is_empty() {
             return;
         }

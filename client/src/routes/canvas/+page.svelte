@@ -492,10 +492,6 @@
       radial-gradient(circle at 50% 50%, rgba(30, 30, 40, 1) 0%, rgba(10, 10, 11, 1) 100%);
   }
 
-  .canvas-viewport.hide-cursor {
-    cursor: none;
-  }
-
   canvas {
     position: absolute;
     top: 0; left: 0;
@@ -576,11 +572,6 @@
     white-space: nowrap;
     margin-top: 2px;
     opacity: 0.9;
-  }
-
-  .coord-hint {
-    color: var(--accent-ink);
-    opacity: 0.8;
   }
 
   .pixel-tooltip {

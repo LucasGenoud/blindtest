@@ -148,15 +148,3 @@ role_extractor!(
     |c| c.role == "administrator",
     AuthError::Forbidden
 );
-
-/// For endpoints that work signed out but behave differently when signed in.
-pub struct MaybeAuthed(pub Option<Claims>);
-
-impl FromRequest for MaybeAuthed {
-    type Error = AuthError;
-    type Future = Ready<Result<Self, Self::Error>>;
-
-    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        ready(Ok(MaybeAuthed(claims_of(req))))
-    }
-}

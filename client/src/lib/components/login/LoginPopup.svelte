@@ -3,7 +3,6 @@
   import { websocket } from '$lib/stores/websocketStore.js';
   import { api } from '$lib/api.js';
   import { connectWebSocket } from '$lib/websocket.js';
-  import { checkEmail } from '$lib/misc.js';
 
   let { onclose } = $props();
   let mode = $state('signin');
@@ -12,6 +11,7 @@
   let name = $state('');
   let error = $state('');
   let loading = $state(false);
+  let emailInput;
 
   async function signin() {
     error = '';
@@ -34,7 +34,7 @@
   async function signup() {
     error = '';
     if (!email || !password || !name) { error = 'Fill all fields'; return; }
-    if (!checkEmail(email)) { error = 'Invalid email'; return; }
+    if (!emailInput.checkValidity()) { error = 'Invalid email'; return; }
     if (password.length < 6) { error = 'Password must be at least 6 characters'; return; }
     loading = true;
     try {
@@ -65,7 +65,7 @@
 
       <label class="field">
         <span class="field-label">Email</span>
-        <input bind:value={email} type="email" />
+        <input bind:this={emailInput} bind:value={email} type="email" required />
       </label>
 
       <label class="field">

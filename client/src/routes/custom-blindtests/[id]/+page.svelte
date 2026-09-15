@@ -232,18 +232,6 @@
     transition: background 0.15s;
   }
   .pool-item:hover { background: var(--surface-2); }
-  .pool-item:hover .add-icon { opacity: 1; }
-  .add-icon {
-    margin-left: auto;
-    opacity: 0;
-    color: var(--accent-text);
-    transition: opacity 0.15s;
-    flex-shrink: 0;
-  }
-  .panel-header .search-icon {
-    color: var(--text-dim);
-    flex-shrink: 0;
-  }
   .pool-name {
     color: var(--text-primary);
     font-size: 13px;

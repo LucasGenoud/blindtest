@@ -6,12 +6,6 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user', 'contributor', 'administrator')),
-    clear_mode INTEGER NOT NULL DEFAULT 0,
-    hide_carousel INTEGER NOT NULL DEFAULT 0,
-    email_confirmation_token TEXT,
-    email_confirmed INTEGER NOT NULL DEFAULT 0,
-    reset_password_token TEXT,
-    reset_password_expires TEXT,
     register_date TEXT NOT NULL,
     deleted INTEGER NOT NULL DEFAULT 0
 );
